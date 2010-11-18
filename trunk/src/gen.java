@@ -2,13 +2,14 @@ import java.util.Random;
 import java.awt.*;
 import java.awt.geom.Line2D;
 import java.applet.*;
+import java.awt.event.*;
 
 
 /**
  * @author termit
- *
+ * @author nebril
  */
-public class gen extends Applet {
+public class gen extends Applet implements ActionListener{
 
 	static int nVertices;
 	static int nPolygons;
@@ -20,14 +21,28 @@ public class gen extends Applet {
 	static int[] arYVals;
 	static Polygon polygons[];
 	Random rn;
+	Boolean generated = false;
 
+	Button generate;
+	Button save;
 	/**
 	 * @param args
 	 */
 
 	public void init()
 	{
-		resize(800,600);
+		resize(1000,600);
+		setLayout(null);
+		generate = new Button("Generuj");
+		save = new Button("Zapisz");
+		generate.setBounds(900, 20, 100, 30);
+		save.setBounds(900, 60,100,30);
+		add(generate);
+		add(save);
+		
+		generate.addActionListener(this);
+		save.addActionListener(this);
+		
 		setSize(nMaxX+2, nMaxY);
 		rn = new Random();
 		//nPolygons = rn.nextInt(25) + 5;
@@ -127,14 +142,7 @@ public class gen extends Applet {
 		}
 	}
 	
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.awt.Container#paint(java.awt.Graphics)
-	 * rysuje to dziadostwo ;)
-	 */
-	public void paint(Graphics g)
-	{
+	public void generate(){
 		Random rn = new Random();
 		polygons = new Polygon[nPolygons];
 		for( int p = 0 ; p < nPolygons ; p++ )
@@ -155,7 +163,6 @@ public class gen extends Applet {
 			}
 			while(intersect){
 				System.out.println("debug2");
-				Boolean inside = false;
 				
 				drawPoints();
 				sortByX(0, nVertices-1);
@@ -216,9 +223,8 @@ public class gen extends Applet {
 					System.out.println("przyjety");
 				}
 			}
-			System.out.println("hej");
-			g.drawPolygon(arXVals, arYVals, nVertices);
 		}
+		generated = true;
 		System.out.println("Polygons:");
 		for(int i = 0 ; i < nPolygons ; i++){
 			System.out.println("Polygon "+i);
@@ -227,5 +233,34 @@ public class gen extends Applet {
 				
 			}
 		}
+	}
+	
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.Container#paint(java.awt.Graphics)
+	 * rysuje to dziadostwo ;)
+	 */
+	public void paint(Graphics g)
+	{
+		if(generated)
+			for(int i = 0 ; i < nPolygons ; i++){
+				g.drawPolygon(polygons[i].xpoints, polygons[i].ypoints, polygons[i].npoints);
+			}
 	} // paint()
+	
+	public void save(){
+		/*
+		 * Save function
+		 */
+	}
+	
+	public void actionPerformed(ActionEvent evt) {
+		if (evt.getSource() == generate){
+			generate();
+			repaint();
+		}else if (evt.getSource() == save){
+			save();
+		}
+	}
 }
