@@ -30,7 +30,7 @@ public class gen extends Applet {
 		setSize(nMaxX+2, nMaxY);
 		rn = new Random();
 		//nPolygons = rn.nextInt(25) + 5;
-		nPolygons = 11;//polygon count +1
+		nPolygons = 7;//polygon count +1
 	} // init()
 
 	
@@ -115,7 +115,7 @@ public class gen extends Applet {
 			System.out.println("debug1");
 			Boolean intersect = true;
 			Polygon polytemp;
-			nVertices = rn.nextInt(7) + 3;// max vertices count
+			nVertices = rn.nextInt(5) + 3;// max vertices count
 			arXVals0 = new int[nVertices];
 			arYVals0 = new int[nVertices];
 			arXVals = new int[nVertices];
@@ -191,6 +191,14 @@ public class gen extends Applet {
 			}
 			System.out.println("hej");
 			g.drawPolygon(arXVals, arYVals, nVertices);
+		}
+		System.out.println("Polygons:");
+		for(int i = 0 ; i < nPolygons ; i++){
+			System.out.println("Polygon "+i);
+			for(int j = 0 ; j < polygons[i].npoints ; j++){
+				System.out.println("point "+j+": ("+polygons[i].xpoints[j]+" , "+polygons[i].ypoints[j]+")");
+				
+			}
 		}
 	} // paint()
 }
