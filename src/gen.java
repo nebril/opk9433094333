@@ -1,7 +1,6 @@
 import java.util.Random;
 import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
+import java.awt.geom.Line2D;
 import java.applet.*;
 
 
@@ -19,6 +18,7 @@ public class gen extends Applet {
 	static int[] arYVals0;
 	static int[] arXVals;
 	static int[] arYVals;
+	static Polygon polygons[];
 	Random rn;
 
 	/**
@@ -30,7 +30,7 @@ public class gen extends Applet {
 		setSize(nMaxX+2, nMaxY);
 		rn = new Random();
 		//nPolygons = rn.nextInt(25) + 5;
-		nPolygons = 1;
+		nPolygons = 11;//polygon count +1
 	} // init()
 
 	
@@ -109,26 +109,87 @@ public class gen extends Applet {
 	public void paint(Graphics g)
 	{
 		Random rn = new Random();
+		polygons = new Polygon[nPolygons];
 		for( int p = 0 ; p < nPolygons ; p++ )
 		{	
-			nVertices = rn.nextInt(7) + 3;
+			System.out.println("debug1");
+			Boolean intersect = true;
+			Polygon polytemp;
+			nVertices = rn.nextInt(7) + 3;// max vertices count
 			arXVals0 = new int[nVertices];
 			arYVals0 = new int[nVertices];
 			arXVals = new int[nVertices];
 			arYVals = new int[nVertices];
-			drawPoints();
-			sortByX(0, nVertices-1);
-			System.out.println("Po sortowaniu:");
-			for( int i = 0; i < nVertices; i++ )
-			{
-				System.out.println("Punkt " + (i+1) + " (" + arXVals0[i] + ", " + arYVals0[i] + ")");
+			
+			if(p == 0) {
+				intersect = false;
+				drawPoints();
+				polygons[0] = new Polygon(arXVals, arYVals, nVertices);
 			}
-			makeOrder();
-			System.out.println("Po ustawieniu:");
-			for( int i = 0; i < nVertices; i++ )
-			{
-				System.out.println("Punkt " + (i+1) + " (" + arXVals[i] + ", " + arYVals[i] + ")");
+			while(intersect){
+				System.out.println("debug2");
+				Boolean inside = false;
+				
+				drawPoints();
+				sortByX(0, nVertices-1);
+				makeOrder();
+
+				polytemp = new Polygon(arXVals, arYVals, nVertices);
+				Boolean br = false;
+				for(int i = 0 ; i<p ; i++){
+					System.out.println("debug3");
+					br = false;
+
+					int[] xpoints = polygons[i].xpoints;
+					int[] ypoints = polygons[i].ypoints;
+					int npoints = polygons[i].npoints;
+					
+					Line2D.Float line1firstlast = new Line2D.Float(xpoints[0], ypoints[0], xpoints[npoints-1], ypoints[npoints-1]);
+					Line2D.Float line2firstlast = new Line2D.Float(arXVals[0], arYVals[0], arXVals[nVertices-1], arYVals[nVertices-1]);
+
+					if(line1firstlast.intersectsLine(line2firstlast)){
+						br = true;
+						System.out.println("odrzucony");
+					}
+					if(br) break;
+					for(int k = 1 ; k < npoints ; k++){
+						Line2D.Float line1 = new Line2D.Float(xpoints[k], ypoints[k], xpoints[k-1], ypoints[k-1]);
+						for(int j = 1 ; j < nVertices ; j++){
+
+							Line2D.Float line2 = new Line2D.Float(arXVals[j], arYVals[j], arXVals[j-1], arYVals[j-1]);
+
+							if(line2.intersectsLine(line1)){
+								br = true;
+								System.out.println("odrzucony");
+								break;
+							}
+						}
+						if(line2firstlast.intersectsLine(line1)){
+							br = true;
+							System.out.println("odrzucony");
+							break;
+						}
+					}
+					if(br) break;
+					for(int j = 1 ; j < nVertices ; j++){//checking intersections for firstlast line and existing polygon vertices
+						Line2D.Float line2 = new Line2D.Float(arXVals[j], arYVals[j], arXVals[j-1], arYVals[j-1]);
+						System.out.println("checking intersection");
+						if(line2.intersectsLine(line1firstlast)){
+							br = true;
+							System.out.println("odrzucony");
+							break;
+						}
+					}
+					if(br) break;
+					
+				}
+				if(!br){
+					intersect = false;
+					polygons[p] = new Polygon(arXVals, arYVals, nVertices);
+					System.out.println("przyjety");
+				}
 			}
+			System.out.println("hej");
 			g.drawPolygon(arXVals, arYVals, nVertices);
 		}
 	} // paint()
