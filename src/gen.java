@@ -35,6 +35,9 @@ public class gen extends Applet {
 	} // init()
 
 	
+	/*
+	 * Losuje punkty dla wielokata
+	 */
 	private void drawPoints()
 	{
 		for( int i = 0; i < nVertices; i++ )
@@ -43,9 +46,12 @@ public class gen extends Applet {
 			arYVals0[i] = rn.nextInt(nMaxY);
 		}
 
-	} // drawPoints()
+	} // drawPoints() 
 
 
+	/*
+	 * Sortuje tablice punktow (X, Y) wg rosnacej wartosci X
+	 */
 	private void sortByX(int left, int right)
 	{
 		int piv = arXVals0[rn.nextInt(right-left+1) + left];
@@ -73,10 +79,24 @@ public class gen extends Applet {
 		if (i < right) sortByX(i, right);
 	} // sortByX()
 
+	
+	/*
+	 * Sprawdza czy punkt znajduje sie powyzej linii laczacej
+	 * skrajnie lewy i skrajnie prawy punkt wielokata
+	 */
 	private boolean pointIsAboveLine(int pointIndex, double a, double b)
 	{
 		return ( a * arXVals0[pointIndex] + b < arYVals0[pointIndex] );
 	}
+
+	
+	/*
+	 * Ustawia punkty w kolejnosci: 
+	 * skrajnie lewy, 
+	 * punkty powyzej linii (od lewej do prawej),
+	 * skrajnie prawy,
+	 * punkty ponizej linii (od prawej do lewej)
+	 */
 	private void makeOrder()
 	{
 		double a = (double) (arYVals0[nVertices-1]-arYVals0[0]) / (double) (arXVals0[nVertices-1]-arXVals0[0]) ;
@@ -107,6 +127,12 @@ public class gen extends Applet {
 		}
 	}
 	
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.Container#paint(java.awt.Graphics)
+	 * rysuje to dziadostwo ;)
+	 */
 	public void paint(Graphics g)
 	{
 		Random rn = new Random();
