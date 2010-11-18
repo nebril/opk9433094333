@@ -27,6 +27,7 @@ public class gen extends Applet {
 
 	public void init()
 	{
+		resize(800,600);
 		setSize(nMaxX+2, nMaxY);
 		rn = new Random();
 		//nPolygons = rn.nextInt(25) + 5;
