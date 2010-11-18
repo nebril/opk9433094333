@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.geom.Line2D;
 import java.applet.*;
 import java.awt.event.*;
+import java.io.*;
 
 
 /**
@@ -249,10 +250,27 @@ public class gen extends Applet implements ActionListener{
 			}
 	} // paint()
 	
+	
+	/*
+	 * Zapis do pliku
+	 */
 	public void save(){
-		/*
-		 * Save function
-		 */
+		String name = "out.txt";
+		try
+		{
+			FileOutputStream plik= new FileOutputStream(name);
+			new PrintStream(plik).println(x.length);
+			for (int i=0; i< polygons.length;i++){
+				new PrintStream(plik).println(x[i]);
+				new PrintStream(plik).println(y[i]);
+			}
+			plik.close();
+		}
+		catch (IOException e)
+		{
+			System.out.println("Unable to write to file!");
+			System.exit(-1);	
+		}
 	}
 	
 	public void actionPerformed(ActionEvent evt) {
