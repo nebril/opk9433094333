@@ -40,7 +40,7 @@ public class gen extends Applet implements ActionListener{
 
 	public void init()
 	{
-		resize(1000,600);
+		//resize(1000,600);
 		setLayout(null);
 		generate = new Button("Generuj");
 		save = new Button("Zapisz");
@@ -67,10 +67,14 @@ public class gen extends Applet implements ActionListener{
 	 */
 	private void drawPoints()
 	{
-		for( int i = 0; i < nVertices; i++ )
+		int sideLx = nMaxX / (int)(0.5 * nPolygons);
+		int sideLy = nMaxY / (int)(0.5 * nPolygons);
+		arXVals0[0] = rn.nextInt(nMaxX-sideLx);
+		arYVals0[0] = rn.nextInt(nMaxY-sideLy);
+		for( int i = 1; i < nVertices; i++ )
 		{
-			arXVals0[i] = rn.nextInt(nMaxX);
-			arYVals0[i] = rn.nextInt(nMaxY);
+			arXVals0[i] = arXVals0[0] + rn.nextInt(sideLx);
+			arYVals0[i] = arYVals0[0] + rn.nextInt(sideLy);
 		}
 
 	} // drawPoints() 
@@ -164,7 +168,7 @@ public class gen extends Applet implements ActionListener{
 			{	
 				Boolean intersect = true;
 				Polygon polytemp;
-				nVertices = rn.nextInt(5) + 3;// max vertices count
+				nVertices = rn.nextInt(3) + 7;// max vertices count
 				arXVals0 = new int[nVertices];
 				arYVals0 = new int[nVertices];
 				arXVals = new int[nVertices];
@@ -190,6 +194,21 @@ public class gen extends Applet implements ActionListener{
 						int[] xpoints = polygons[i].xpoints;
 						int[] ypoints = polygons[i].ypoints;
 						int npoints = polygons[i].npoints;
+						
+						
+						//checking for polygons in polygons
+						for(int k = 0 ; k < polytemp.npoints ; k++){
+							if(polygons[i].contains(polytemp.xpoints[k], polytemp.ypoints[k])){
+								br = true;
+							}
+						}
+						
+						for(int k = 0 ; k< npoints ; k++){
+							if(polytemp.contains(xpoints[k], ypoints[k])){
+								br = true;
+							}
+						}
+						//endof checking for polygons in polygons
 						
 						Line2D.Float line1firstlast = new Line2D.Float(xpoints[0], ypoints[0], xpoints[npoints-1], ypoints[npoints-1]);
 						Line2D.Float line2firstlast = new Line2D.Float(arXVals[0], arYVals[0], arXVals[nVertices-1], arYVals[nVertices-1]);
@@ -270,35 +289,37 @@ public class gen extends Applet implements ActionListener{
 	*/
 
 	public void save(){
-	String name = "out.txt";
-	int i, j;
-	try
-	{
-		FileOutputStream plik = new FileOutputStream(name);
-		PrintStream ps = new PrintStream(plik);
-		ps.println(polygons.length);
-	
-		for (i=0; i< polygons.length;i++){
-			for(j=0; j < polygons[i].npoints; j++){
-				ps.print(polygons[i].xpoints[j]);
-				ps.print(" ");
-			}
-			ps.println("");
-			for(j=0; j < polygons[i].npoints; j++)
+		if(generated){
+			String name = "out.txt";
+			int i, j;
+			try
 			{
-				ps.print(polygons[i].ypoints[j]);
-				ps.print(" ");
+				FileOutputStream plik = new FileOutputStream(name);
+				PrintStream ps = new PrintStream(plik);
+				ps.println(polygons.length);
+			
+				for (i=0; i< polygons.length;i++){
+					for(j=0; j < polygons[i].npoints; j++){
+						ps.print(polygons[i].xpoints[j]);
+						ps.print(" ");
+					}
+					ps.println("");
+					for(j=0; j < polygons[i].npoints; j++)
+					{
+						ps.print(polygons[i].ypoints[j]);
+						ps.print(" ");
+					}
+					ps.println("");
+				}
+			
+				plik.close();
+				System.out.println("Wrote to file!");
 			}
-			ps.println("");
-		}
-	
-		plik.close();
-		System.out.println("Wrote to file!");
-	}
-	catch (IOException e)
-	{
-	System.out.println("Unable to write to file!");
-	System.exit(-1);	
+			catch (IOException e)
+			{
+			System.out.println("Unable to write to file!");
+			System.exit(-1);	
+			}
 	}
 }
 	
