@@ -14,6 +14,10 @@ import java.io.PrintStream;
  */
 public class gen extends Applet implements ActionListener{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	static int nVertices;
 	static int nPolygons;
 	static int nMaxX = 800;
@@ -40,7 +44,7 @@ public class gen extends Applet implements ActionListener{
 
 	public void init()
 	{
-		//resize(1000,600);
+		resize(1000,800);
 		setLayout(null);
 		generate = new Button("Generuj");
 		save = new Button("Zapisz");
@@ -57,6 +61,7 @@ public class gen extends Applet implements ActionListener{
 		
 		setSize(nMaxX+2, nMaxY);
 		rn = new Random();
+		
 		//nPolygons = rn.nextInt(25) + 5;
 		//nPolygons = 7;//polygon count +1
 	} // init()
@@ -290,7 +295,7 @@ public class gen extends Applet implements ActionListener{
 
 	public void save(){
 		if(generated){
-			String name = "out.txt";
+			String name = "out"+polygons.length+".txt";
 			int i, j;
 			try
 			{
