@@ -1,6 +1,7 @@
 import java.util.Random;
 import java.awt.*;
 import java.awt.geom.Line2D;
+import java.awt.geom.Line2D.Float;
 import java.applet.*;
 import java.awt.event.*;
 import java.io.BufferedReader;
@@ -14,6 +15,10 @@ import java.io.PrintStream;
 
 
 public class Solver extends Applet implements ActionListener{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	static Polygon polygons[];
 	static Polygon theAnswer;
 	static int nPolygons;
@@ -128,10 +133,12 @@ public class Solver extends Applet implements ActionListener{
 	}
 	
 	private Polygon getPolyOnPolygons(Polygon polys[]){
-		Polygon result = new Polygon();
+		Polygon result = null;
+		int xleft[], xright[], yleft, yright[];
+
 		int adj[];
 		for(int i = 1 ; i < polys.length ; ++i){
-			adj = getClosestNodesPositions(polygons[i-1], polygons[i]);
+			adj = getClosestNodesPositions(polys[i-1], polys[i]);
 			//TODO
 			if(i == 1){
 				
@@ -142,6 +149,55 @@ public class Solver extends Applet implements ActionListener{
 			}
 
 		}
+		
+		
+		return result;
+	}
+	/*
+	 * Returns four ints - positions of points in two polygons, between which the lines should be drawn.
+	 * result[0] - point in p1 in line1
+	 * result[1] - point in p2 in line1
+	 * result[2] - point in p1 in line2
+	 * result[3] - point in p2 in line2
+	 */
+	private int[] getClosestLinesPositions(Polygon p1, Polygon p2){
+		int result[] = new int[4];
+		int closePoints[] = getClosestNodesPositions(p1,p2);
+		
+		Point point1, point2;
+		
+		Line2D.Float lines[] = new Line2D.Float[9];
+		//int lengthsSquared[] = new int[9];
+		int minSquaredL1 = Integer.MAX_VALUE, 
+		minSquaredL2 = Integer.MAX_VALUE,
+		minIndex1 = 0, 
+		minIndex2 = 0;
+		int k = 0;
+		for(int i = -1 ; i < 2 ; ++i){
+			for(int j = -1 ; j < 2 ; ++j){
+				int index1 = getPointIndex(p1, closePoints[0], i);
+				int index2 = getPointIndex(p2, closePoints[1], j);
+				lines[k] = new Line2D.Float(p1.xpoints[index1], p1.ypoints[index1], p2.xpoints[index2], p2.ypoints[index2]);
+				++k;
+			}
+		}
+		for(int i = 0 ; i < 9 ; ++i){
+			if(lineIntersectsPoly(lines[i], p1) || lineIntersectsPoly(lines[i], p2)){
+				//lengthsSquared[i] = -1;
+			}else{
+				if(getLengthSquared(lines[i]) < minSquaredL1){
+					minIndex1 = i;
+				}else if(getLengthSquared(lines[i]) < minSquaredL2){
+					minIndex2 = i;
+				}
+				//lengthsSquared[i] = getLengthSquared(lines[i]);
+			}
+		}
+		if(minSquaredL1 == Integer.MAX_VALUE || minSquaredL2 == Integer.MAX_VALUE){
+			
+		}
+		
+		
 		
 		
 		return result;
@@ -165,23 +221,31 @@ public class Solver extends Applet implements ActionListener{
 		return result;
 	}
 	
-	private Point[] getNeighbourPoints(Polygon poly, Point point, int position ){
-		Point result[] = new Point[2];
-		//TODO
-		return result;
+	private boolean lineIntersectsPoly(Line2D line, Polygon poly){
+		Line2D polyLine;
+		for(int i = 1 ; i <poly.npoints ; ++i){
+			polyLine = new Line2D.Float();
+			polyLine.setLine(poly.xpoints[i-1], poly.ypoints[i-1] , poly.xpoints[i], poly.ypoints[i]);
+			if(line.intersectsLine(polyLine)){
+				return true;
+			}
+		}
+		return false;
 	}
 	
-	private Point getAdjPoint(Polygon poly, int offset, int steps){
-		Point result;
-		int position = offset + (steps & poly.npoints);
-		if(position >= 0 && position < poly.npoints){
-		}else if(position < 0){
-			position = poly.npoints + position;
-		}else if(position >= poly.npoints){
-			position = position % poly.npoints;
+	private int getPointIndex(Polygon poly, int offset, int steps){
+		int pos;
+		steps = steps % poly.npoints;
+		pos = offset + steps;
+		if(pos < 0){
+			pos = poly.npoints + pos;
+		}else if(pos > poly.npoints){
+			pos = pos % poly.npoints;
 		}
-		result = new Point(poly.xpoints[position], poly.ypoints[position]);
-		
-		return result;
+		return pos;
+	}
+	
+	private int getLengthSquared(Line2D.Float line){
+		return (int) ((line.x1 - line.x2)*(line.x1 - line.x2) + (line.y1 - line.y2)*(line.y1 - line.y2));
 	}
 }
