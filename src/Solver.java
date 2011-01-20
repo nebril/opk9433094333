@@ -274,13 +274,6 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		
 		temp1 = new Line2D.Float(p1.xpoints[p1Point1], p1.ypoints[p1Point1], p2.xpoints[p2Point1], p2.ypoints[p2Point1]);
 		temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
-		if(lineIntersectsPoly(temp1, p1) || lineIntersectsPoly(temp1, p2) || lineIntersectsPoly(temp2, p1) || lineIntersectsPoly(temp2, p2)){
-			temp = p1Point1;
-			p1Point1 = p1Point2;
-			p1Point2 = temp;
-			temp1 = new Line2D.Float(p1.xpoints[p1Point1], p1.ypoints[p1Point1], p2.xpoints[p2Point1], p2.ypoints[p2Point1]);
-			temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
-		}
 		if(temp1.intersectsLine(temp2) ){
 			temp = p1Point1;
 			p1Point1 = p1Point2;
