@@ -1,7 +1,6 @@
 import java.util.Random;
 import java.awt.*;
 import java.awt.geom.Line2D;
-import java.awt.geom.Line2D.Float;
 import java.applet.*;
 import java.awt.event.*;
 import java.io.BufferedReader;
@@ -21,17 +20,20 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	static Polygon polygons[];
 	static Polygon theAnswer;
 	static int nPolygons;
+	static int minPolygons;
 	static int nMaxX = 800;
 	static int nMaxY = 600;
 	static Vector<Point> centerPoints = new Vector<Point>();
 	Boolean re = false;
 	Boolean generated = false;
-	
+	int [][] densities;
+	private Vector<Integer> [][] polysInDens;
+	int side;
 	Button generate;
 	Button load;
+	Random randGen = new Random();
 	
-	public void init()
-	{
+	public void init(){
 		resize(1000,800);
 		setLayout(null);
 		generate = new Button("Generuj");
@@ -79,72 +81,163 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		}
 	}
 	
-	public String loadFile(Frame f, String title, String defDir, String fileType) {
-	  FileDialog fd = new FileDialog(f, title, FileDialog.LOAD);
-	  fd.setFile(fileType);
-	  fd.setDirectory(defDir);
-	  fd.setLocation(50, 50);
-	  fd.setVisible(true);
-	  return fd.getFile();
-	 }
-
 	
-	public void load() throws IOException{
-		String fileName = loadFile(new Frame(), "Open...", ".\\", "*.txt");
-			FileInputStream fstream = new FileInputStream(fileName);
-			DataInputStream in = new DataInputStream(fstream);
-	        BufferedReader br = new BufferedReader(new InputStreamReader(in));
-	        String line1;
-	        String line2;
-	        centerPoints = new Vector<Point>();
-	        line1 = br.readLine();
-	        if(line1 == null){
-	        	System.out.println("File empty!");
-	        	return;
-	        }
-	        nPolygons = Integer.parseInt(line1);
-	        polygons = new Polygon[nPolygons];
-	        int whichPoly = 0;
-	        while((line1 = br.readLine()) != null){
-	        	line2 = br.readLine();
-	        	if(line2 == null){
-	        		System.out.println("Error reading file!");
-	        		return;
-	        	}
-	        	int points = line1.replaceAll("[^ ]", "").length();
-	        	//System.out.println(points);
-	        	String strXArray[] = line1.split(" ");
-	        	String strYArray[] = line2.split(" ");
-	        	polygons[whichPoly] = new Polygon();
-	        	for(int i = 0 ; i < points ; ++i){
-	        		polygons[whichPoly].addPoint(Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i]));
-	        	}
-	        	centerPoints.add(PolygonCenterOfMass(polygons[whichPoly]));
-	        	++whichPoly;
-	        }
-	        generated = false;
-	        re = true;
-	}
 	private void generate(){
 		if(re == false){
 			return;
 		}
-		
-		//theAnswer = joinPolygons(polygons[0], polygons[1]);
-		/*theAnswer = joinPolygons(polygons[0], polygons[2]);
-		theAnswer = joinPolygons(theAnswer, polygons[3]);
-		theAnswer = joinPolygons(theAnswer, polygons[1]);*/
-		
+
+		setDensityAreas();
+		Polygon test[] = getClosePolygons();
+		theAnswer = getPolyOnPolygons(test);
+		theAnswer = getConcavedPoly(theAnswer);
 		generated = true;
 		//TODO
 		
 	}
-	
-	private void getDensityAreas(){
+	private Polygon getConcavedPoly(Polygon poly){
 		
+		
+		
+		return poly;
+	}
+	private Polygon[] getClosePolygons(){
+		int denseI = 0, denseJ = 0;
+		int maxDens = Integer.MIN_VALUE;
+		for(int i = 0 ; i < side ; ++i){
+			for(int j = 0 ; j < side ; ++j){
+				if(densities[i][j] > maxDens){
+					denseI = i;
+					denseJ = j;
+					maxDens = densities[i][j];
+				}
+			}
+		}
+		
+		Polygon[] result = new Polygon[minPolygons];
+		Vector <Point> areas = new Vector <Point>();
+		areas.add(new Point(denseI,denseJ));
+		int p = densities[denseI][denseJ];
+		if(densities[denseI][denseJ] > minPolygons){
+
+		}else{
+			int currentI = denseI, currentJ = denseJ;
+			//System.out.println(currentI+"x"+currentJ);
+			while(p < minPolygons){
+				int itemp = currentI, jtemp = currentJ;
+				//int maxDens2 = Integer.MIN_VALUE;
+				while(areas.contains(new Point(itemp,jtemp))){
+					int temp = currentI;
+					do{
+						int t = randGen.nextInt() % 3 - 1;
+						temp = currentI + t;
+						//System.out.println("t1:"+t);
+					}while(temp < 0 || temp >= side);
+					
+					itemp = temp;
+					temp = currentJ;
+					
+					do{
+						int t = randGen.nextInt() % 3 - 1;
+						temp = currentJ + t;
+						//System.out.println("t2:"+t);
+					}while(temp < 0 || temp >= side);
+					
+					jtemp = temp;
+					//System.out.println(itemp+"x"+jtemp);
+				}
+				currentI = itemp;
+				currentJ = jtemp;
+
+				p += densities[currentI][currentJ];
+				areas.add(new Point(currentI,currentJ));
+			}
+		}
+		int c = 0;
+		Polygon firstPolys[] = new Polygon[p];
+		int indexes[] = new int[p];
+		for(int i = 0 ; i < areas.size() ; ++i){
+			for(int j = 0 ; j < polysInDens[areas.get(i).x][areas.get(i).y].size() ; ++j){
+				firstPolys[c] = polygons[polysInDens[areas.get(i).x][areas.get(i).y].get(j)];
+				indexes[c] = polysInDens[areas.get(i).x][areas.get(i).y].get(j);
+				//System.out.println(polysInDens[areas.get(i).x][areas.get(i).y].get(j));
+				c++;
+			}
+		}
+		
+		indexes = orderPolys(indexes);
+		
+		for(int i = 0 ; i < minPolygons ; ++i){
+			result[i] = polygons[indexes[i]];
+		}
+		return result;
 	}
 	
+	private int[] orderPolys(int indexes[]){
+		int start = 0;
+		float minY = Integer.MAX_VALUE;
+		float minX = Integer.MAX_VALUE;
+		for(int i = 0 ; i < indexes.length ; ++i){
+			if(centerPoints.get(i).x < minX){
+				if(centerPoints.get(i).y < minY){
+					start = i;
+					minY = centerPoints.get(i).y;
+					minX = centerPoints.get(i).x;
+				}
+			}
+		}
+		
+		int result[] = new int[indexes.length];
 
+		result[0] = start;
+		for(int i = 1 ; i < result.length ; ++i){
+			int minLength = Integer.MAX_VALUE;
+			for(int j = 0 ; j < indexes.length ; ++j){
+				if(result[i-1] == indexes[j]){
+					continue;
+				}
+				int length = getLengthSquared(new Line2D.Float(centerPoints.get(result[i-1]).x , centerPoints.get(result[i-1]).y, centerPoints.get(indexes[j]).x , centerPoints.get(indexes[j]).y));
+				if(length < minLength){
+					minLength = length;
+					result[i] = indexes[j];
+				}
+			}
+		}
+
+		return indexes;
+	}
+	
+	private void setDensityAreas(){
+		side = 3;
+		densities = new int[side][side];
+
+		polysInDens = new Vector[side][side];
+		for(int i = 0 ; i < side ; ++i){
+			for(int j = 0 ; j < side ; ++j){
+				densities[i][j] = 0;
+				polysInDens[i][j] = new Vector<Integer>();
+			}
+		}
+		
+		for(int i = 0 ; i < side ; ++i){
+			for(int j = 0 ; j < side ; ++j){
+				Rectangle rec = new Rectangle(i*nMaxX/side, j*nMaxY/side, nMaxX/side, nMaxY/side);
+				for(int k = 0 ; k < nPolygons ; ++k){
+					if(rec.contains(centerPoints.get(k))){
+						densities[i][j]++;
+						polysInDens[i][j].add(k);
+					}
+				}
+			}
+		}
+		
+		for(int i = 0 ; i < side ; ++i){
+			for(int j = 0 ; j < side ; ++j){
+				System.out.println(i+"x"+j+" density: "+densities[i][j]);
+			}
+		}
+	}
+	
 	private Polygon joinPolygons(Polygon p1, Polygon p2){
 		Line2D.Float bound = new Line2D.Float(PolygonCenterOfMass(p1), PolygonCenterOfMass(p2));
 		int p1Point1 = 0, p1Point2 = 0, p2Point1 = 0, p2Point2 = 0, temp;
@@ -154,7 +247,6 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		
 		for(int i = 0 ; i < p1.npoints ; i++){
 			int iminus = getPointIndex(p1, i , -1);
-			System.out.println(iminus);
 			if(bound.intersectsLine(p1.xpoints[iminus], p1.ypoints[iminus], p1.xpoints[i], p1.ypoints[i])){
 				temp1 = new Line2D.Float(bound.x1, bound.x2, p1.xpoints[iminus],p1.ypoints[iminus]);
 				temp2 = new Line2D.Float(bound.x1, bound.x2, p1.xpoints[i],p1.ypoints[i]);
@@ -170,7 +262,6 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		for(int i = 0 ; i < p2.npoints ; i++){
 			int iminus = getPointIndex(p2, i , -1);
 			if(bound.intersectsLine(p2.xpoints[iminus], p2.ypoints[iminus], p2.xpoints[i], p2.ypoints[i])){
-				System.out.println("Bound enter:");
 				temp1 = new Line2D.Float(bound.x1, bound.x2, p2.xpoints[iminus],p2.ypoints[iminus]);
 				temp2 = new Line2D.Float(bound.x1, bound.x2, p2.xpoints[i],p2.ypoints[i]);
 				if(getLineLengthSq(temp1)+getLineLengthSq(temp2) > maxDistSq){
@@ -184,7 +275,6 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		temp1 = new Line2D.Float(p1.xpoints[p1Point1], p1.ypoints[p1Point1], p2.xpoints[p2Point1], p2.ypoints[p2Point1]);
 		temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
 		if(lineIntersectsPoly(temp1, p1) || lineIntersectsPoly(temp1, p2) || lineIntersectsPoly(temp2, p1) || lineIntersectsPoly(temp2, p2)){
-			System.out.println("mixup1:");
 			temp = p1Point1;
 			p1Point1 = p1Point2;
 			p1Point2 = temp;
@@ -192,14 +282,46 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 			temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
 		}
 		if(temp1.intersectsLine(temp2) ){
-			System.out.println("mixup2:");
 			temp = p1Point1;
 			p1Point1 = p1Point2;
 			p1Point2 = temp;
 			temp1 = new Line2D.Float(p1.xpoints[p1Point1], p1.ypoints[p1Point1], p2.xpoints[p2Point1], p2.ypoints[p2Point1]);
 			temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
 		}
-
+		boolean t1,t2,t3,t4;
+		t1=t2=t3=t4=false;
+		while((t1 = lineIntersectsPoly(temp1, p1)) || (t2 = lineIntersectsPoly(temp2, p1)) || (t3 = lineIntersectsPoly(temp1, p2)) || (t4 = lineIntersectsPoly(temp2, p2))){
+			if(t1){
+				if(p1Point1 == getPointIndex(p1, p1Point2, -1)){
+					p1Point1 = this.getPointIndex(p1, p1Point1, -1);
+				}else{
+					p1Point1 = this.getPointIndex(p1, p1Point1, 1);
+				}
+			}
+			if(t2){
+				if(p1Point2 == getPointIndex(p1, p1Point1, -1)){
+					p1Point2 = this.getPointIndex(p1, p1Point2, -1);
+				}else{
+					p1Point2 = this.getPointIndex(p1, p1Point2, 1);
+				}
+			}
+			if(t3){
+				if(p2Point2 == getPointIndex(p2, p2Point1, -1)){
+					p2Point2 = this.getPointIndex(p2, p2Point2, -1);
+				}else{
+					p2Point2 = this.getPointIndex(p2, p2Point2, 1);
+				}
+			}
+			if(t4){
+				if(p2Point2 == getPointIndex(p2, p2Point1, -1)){
+					p2Point2 = this.getPointIndex(p2, p2Point2, -1);
+				}else{
+					p2Point2 = this.getPointIndex(p2, p2Point2, 1);
+				}
+			}
+			temp1 = new Line2D.Float(p1.xpoints[p1Point1], p1.ypoints[p1Point1], p2.xpoints[p2Point1], p2.ypoints[p2Point1]);
+			temp2 = new Line2D.Float(p1.xpoints[p1Point2], p1.ypoints[p1Point2], p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
+		}
 		Polygon result = new Polygon();
 
 		int step;
@@ -209,7 +331,6 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 			step = 1;
 		}
 		for(int i = p1Point2 ; i != p1Point1 ; i = getPointIndex(p1, i , step)){
-			System.out.println(i);
 			result.addPoint(p1.xpoints[i], p1.ypoints[i]);
 		}
 		result.addPoint(p1.xpoints[p1Point1], p1.ypoints[p1Point1]);
@@ -219,24 +340,12 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		}else{
 			step = -1;
 		}
-		System.out.println("Adding points from second");
-		System.out.println(p2Point1);
-		System.out.println(p2Point2);
 		for(int i = p2Point1 ; i != p2Point2 ; i = getPointIndex(p2, i , step)){
-			System.out.println(i);
 			result.addPoint(p2.xpoints[i], p2.ypoints[i]);
 		}
-		System.out.println("Adding point from second");
 		result.addPoint(p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
 		
 		return result;
-	}
-	
-	private Polygon[] orderPolys(Polygon polys[]){
-		
-		
-		
-		return polys;
 	}
 	
 	public double UnsignedPolygonArea(Polygon poly)
@@ -306,56 +415,76 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return (int) ((line.x1 - line.x2)*(line.x1 - line.x2) + (line.y1 - line.y2)*(line.y1 - line.y2));
 	}
 	
-	private Polygon getPolyOnPolygons(Polygon polys[]){
-		Polygon result = new Polygon();
-		Vector<Point> pLeft = new Vector<Point>();
-		Vector<Point> pRight = new Vector<Point>();
-		int endIndexes[] = new int[2];
-		int opposite;
+	public String loadFile(Frame f, String title, String defDir, String fileType) {
+		  FileDialog fd = new FileDialog(f, title, FileDialog.LOAD);
+		  fd.setFile(fileType);
+		  fd.setDirectory(defDir);
+		  fd.setLocation(50, 50);
+		  fd.setVisible(true);
+		  return fd.getFile();
+	}
 
-		int adj[];
-		for(int i = 1 ; i < polys.length ; ++i){
-			adj = getClosestLinesPositions(polys[i-1], polys[i]);
-			if(i == 1){
-				opposite = getPointIndex(polys[i-1], adj[0], polys[i-1].npoints/2);
-				for(int j = opposite ; j < polys[i-1].npoints ; ++j){
-					pLeft.add(new Point(polys[i-1].xpoints[j],polys[i-1].ypoints[j]));
-				}
-				for(int j = getPointIndex(polys[i-1], opposite, -1) ; j >= 0 ; --j){
-					pRight.add(new Point(polys[i-1].xpoints[j],polys[i-1].ypoints[j]));
-				}
-				pLeft.add((new Point(polys[i].xpoints[adj[1]],polys[i].ypoints[adj[1]])));
-				pRight.add((new Point(polys[i].xpoints[adj[3]],polys[i].ypoints[adj[3]])));
-			}else if(i == polys.length-1){
-				for(int j = endIndexes[0] ; j != endIndexes[1] ; j = getPointIndex(polys[i], j, 1)){
-					pLeft.add(new Point(polys[i-1].xpoints[j],polys[i-1].ypoints[j]));
-				}
-			}else{
-				for(int j = endIndexes[0] ; j < polys[i-1].npoints ; ++j){
-					pLeft.add(new Point(polys[i-1].xpoints[j],polys[i-1].ypoints[j]));
-				}
-				
-				for(int j = endIndexes[1] ; j >= 0 ; --j){
-					pRight.add(new Point(polys[i-1].xpoints[j],polys[i-1].ypoints[j]));
-				}
-				
-				pLeft.add((new Point(polys[i].xpoints[adj[1]],polys[i].ypoints[adj[1]])));
-				pRight.add((new Point(polys[i].xpoints[adj[3]],polys[i].ypoints[adj[3]])));
+		
+	public void load() throws IOException{
+		String fileName = loadFile(new Frame(), "Open...", ".\\", "*.txt");
+			FileInputStream fstream = new FileInputStream(fileName);
+			DataInputStream in = new DataInputStream(fstream);
+	        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+	        String line1;
+	        String line2;
+	        centerPoints = new Vector<Point>();
+	        line1 = br.readLine();
+	        if(line1 == null){
+	        	System.out.println("File empty!");
+	        	return;
+	        }
+	        nPolygons = Integer.parseInt(line1);
+	        if(nPolygons % 2 == 1){
+	        	minPolygons = nPolygons/2 + 1;
+	        }else{
+	        	minPolygons = nPolygons/2;
+	        }
+	        polygons = new Polygon[nPolygons];
+	        int whichPoly = 0;
+	        while((line1 = br.readLine()) != null){
+	        	line2 = br.readLine();
+	        	if(line2 == null){
+	        		System.out.println("Error reading file!");
+	        		return;
+	        	}
+	        	int points = line1.replaceAll("[^ ]", "").length();
+	        	//System.out.println(points);
+	        	String strXArray[] = line1.split(" ");
+	        	String strYArray[] = line2.split(" ");
+	        	polygons[whichPoly] = new Polygon();
+	        	for(int i = 0 ; i < points ; ++i){
+	        		polygons[whichPoly].addPoint(Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i]));
+	        	}
+	        	centerPoints.add(PolygonCenterOfMass(polygons[whichPoly]));
+	        	
+	        	++whichPoly;
+	        }
+	        generated = false;
+	        re = true;
+	}
+	
+	private Polygon getPolyOnPolygons(Polygon polys[]){
+		System.out.println("length: "+polys.length);
+		int remaining = 0;
+		int step;
+		int i = 0;
+		for(step = 1 ; step < polys.length ; step *= 2){
+			for(i = 0 ; i + step < polys.length ; i += step + 1){
+				//System.out.println("Joining "+i+" and "+(i+step));
+
+				polys[i] = joinPolygons(polys[i], polys[i+step]);
 			}
-			endIndexes[0] = adj[1];
-			endIndexes[1] = adj[3];
 		}
-		for(int i = 0 ; i < pLeft.size() ; ++i){
-			System.out.println("{"+pLeft.get(i).x+","+pLeft.get(i).y+"}");
-			result.addPoint(pLeft.get(i).x, pLeft.get(i).y);
-		}
-		System.out.println();
-		for(int i = pRight.size()-1 ; i >=0 ; --i){
-			System.out.println("{"+pRight.get(i).x+","+pRight.get(i).y+"}");
-			result.addPoint(pRight.get(i).x, pRight.get(i).y);
+		for(; i < polys.length ; ++i){
+			polys[0] = joinPolygons(polys[0], polys[i]);
 		}
 		
-		return result;
+		return polys[0];
 	}
 	/*
 	 * Returns four ints - positions of points in two polygons, between which the lines should be drawn.
@@ -437,6 +566,9 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		for(int i = 1 ; i <poly.npoints ; ++i){
 			polyLine = new Line2D.Float();
 			polyLine.setLine(poly.xpoints[i-1], poly.ypoints[i-1] , poly.xpoints[i], poly.ypoints[i]);
+			if(lineCommonPoint(line, polyLine)){
+				continue;
+			}
 			if(line.intersectsLine(polyLine)){
 				return true;
 			}
@@ -444,6 +576,14 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return false;
 	}
 
+	private boolean lineCommonPoint(Line2D l1, Line2D l2){
+		Point p1 = new Point((int)l1.getX1(), (int)l1.getY1());
+		Point p2 = new Point((int)l1.getX2(), (int)l1.getY2());
+		Point p3 = new Point((int)l2.getX1(), (int)l2.getY1());
+		Point p4 = new Point((int)l2.getX2(), (int)l2.getY2());
+		
+		return (p1.equals(p3) || p1.equals(p4) || p2.equals(p3) || p2.equals(p4));
+	}
 	@Override
 	public void mouseDragged(MouseEvent e) {
 		// TODO Auto-generated method stub
@@ -455,4 +595,5 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		// TODO Auto-generated method stub
 		getAppletContext().showStatus(e.getX()+"x"+e.getY());
 	}
+	
 }
