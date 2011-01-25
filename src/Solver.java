@@ -26,7 +26,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	static int nMaxX = 800;
 	static int nMaxY = 600;
 	static Vector<Point> centerPoints = new Vector<Point>();
-	static Vector<PointAlfa> allPoints;
+	static Vector<Point> allPoints;
 	Boolean re = false;
 	Boolean generated = false;
 	int [][] densities;
@@ -81,7 +81,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		
 		//theAnswer.sides.remove(0);
 		//theAnswer.setFromSides(theAnswer.sides);
-		ulepsz_otoczke(getPointsFromPolygons(t), getPointsFromPolygons(pTest));
+		ulepsz_otoczke(getPointsFromPolygons(t), stripPointsFromPolygon(getPointsFromPolygons(pTest), theAnswer));
 		generated = true;
 	}
 	
@@ -409,11 +409,11 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	   //return(area < 0 ? -area : area);//for unsigned
 	}
 	
-	public PointAlfa PolygonCenterOfMass(PolygonSides poly)
+	public Point PolygonCenterOfMass(PolygonSides poly)
 	{
 		float cx=0,cy=0;
 		float A=(float)UnsignedPolygonArea(poly);
-		PointAlfa res = new PointAlfa(0,0);
+		Point res = new Point(0,0);
 		int i,j;
 
 		float factor=0;
@@ -491,7 +491,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	        }
 	        polygons = new PolygonSides[nPolygons];
 	        wszystkie_krawedzie = new Vector<Line2D.Float>();
-	        allPoints = new Vector<PointAlfa>();
+	        allPoints = new Vector<Point>();
 	        int whichPoly = 0;
 	        while((line1 = br.readLine()) != null){
 	        	line2 = br.readLine();
@@ -506,7 +506,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	        	polygons[whichPoly] = new PolygonSides();
 	        	for(int i = 0 ; i < points ; ++i){
 	        		polygons[whichPoly].addPoint(Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i]));
-	        		allPoints.add(new PointAlfa(Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i])));
+	        		allPoints.add(new Point(Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i])));
 	        		if(i > 0 ){
 	        			wszystkie_krawedzie.add(new Line2D.Float(Integer.parseInt(strXArray[i-1]), Integer.parseInt(strYArray[i-1]), Integer.parseInt(strXArray[i]), Integer.parseInt(strYArray[i])));
 	        		}
@@ -656,7 +656,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	private int starty;
 	private Vector <Line2D.Float> wszystkie_krawedzie;
 	private Vector<PolygonSides> wwotoczce;
-	private Vector<PointAlfa> punkty_rozwiazania = new Vector<PointAlfa>();
+	private Vector<Point> punkty_rozwiazania = new Vector<Point>();
 	/*
 	
 	private void szukaj_otoczki(int [] polys){
@@ -711,7 +711,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		countN++;
 	    //cout << licznik << "\r";
 	    Vector<Polygon> checked = new Vector<Polygon>();
-	    Vector<PointAlfa> pointsChecked = new Vector<PointAlfa>();
+	    Vector<Point> pointsChecked = new Vector<Point>();
 
 
 	    for(int i = 0 ; i < k ; i++){
@@ -721,7 +721,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	    {
 	        for(int j = 0 ; j < checked.get(i).npoints ; j++)
 	        {
-	        	pointsChecked.add(new PointAlfa(checked.get(i).xpoints[j],checked.get(i).ypoints[j]));
+	        	pointsChecked.add(new Point(checked.get(i).xpoints[j],checked.get(i).ypoints[j]));
 	        }
 	    }
 
@@ -729,12 +729,12 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	}
 	
-	private void otoczka(Vector<PointAlfa> punkty_rozw,Vector<Polygon> spr_w){
-		PointAlfa temp;
+	private void otoczka(Vector<Point> punkty_rozw,Vector<Polygon> spr_w){
+		Point temp;
 	    int startx,starty,ile = 0;
-	    Stack<PointAlfa> stos = new Stack<PointAlfa>();
-	    Vector <PointAlfa> punkty_otoczki = new Vector<PointAlfa>();
-	    Vector <PointAlfa> tempp = punkty_rozw;
+	    Stack<Point> stos = new Stack<Point>();
+	    Vector <Point> punkty_otoczki = new Vector<Point>();
+	    Vector <Point> tempp = punkty_rozw;
 	    //=================PRZYGOTOWANIE PUNKTOW=================================
 
 	    //znalezienie najnizej polozonego punktu
@@ -748,8 +748,8 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	    startx = punkty_rozw.get(0).x;           //przypisanie do zmiennych startx/starty wartosci najnizej polozonego punktu
 	    starty = punkty_rozw.get(0).y;
-	    temp = new PointAlfa(0,0);
-	    PointAlfa t = new PointAlfa(0,0);
+	    temp = new Point(0,0);
+	    Point t = new Point(0,0);
 	    t.alfa = 0;
 	    punkty_rozw.set(0, t);
 
@@ -759,7 +759,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	    for(int i = 1 ; i < punkty_rozw.size() ; i++)
 	    {
-	    	t = new PointAlfa(punkty_rozw.get(i).x - startx , starty - punkty_rozw.get(i).y);
+	    	t = new Point(punkty_rozw.get(i).x - startx , starty - punkty_rozw.get(i).y);
 	    	t.licz_alfa();
 	    	punkty_rozw.set(i, t);
 	    }
@@ -789,7 +789,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 
 	    for (int i=3;i<punkty_rozw.size();i++){                 //dopoki przejscie do nastepnego punkty z listy powoduje skret w prawo
-			while(skret( (Stack<PointAlfa>) stos.clone(),punkty_rozw.get(i))==1)
+			while(skret( (Stack<Point>) stos.clone(),punkty_rozw.get(i))==1)
 			{
 		        stos.pop();                                         //usuwamy wierzcholek ze szczytu stosu
 		    }
@@ -799,15 +799,15 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	    while(!(stos.empty()))                                  //przerzucamy punkty ze stosu do wektora punkty_otoczki
 	    {
-	        punkty_otoczki.add((PointAlfa) stos.pop());
+	        punkty_otoczki.add((Point) stos.pop());
 	    }
 
 	                                                            //przywracamy wszystkim punktom pierwotne wartosci
-	    punkty_otoczki.set(punkty_otoczki.size()-1, new PointAlfa(startx,starty));
+	    punkty_otoczki.set(punkty_otoczki.size()-1, new Point(startx,starty));
 
 
 	    for(int i = 0 ; i < punkty_otoczki.size()-1 ; i++){
-	        punkty_otoczki.set(i, new PointAlfa(punkty_otoczki.get(i).x + startx, starty - punkty_otoczki.get(i).y));
+	        punkty_otoczki.set(i, new Point(punkty_otoczki.get(i).x + startx, starty - punkty_otoczki.get(i).y));
 	    }
 
 	    System.out.println("Pole: "+pole_wielokata(punkty_otoczki));
@@ -817,15 +817,15 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	        for(int m = 0 ; m < wszystkie_krawedzie.size() ; m++){
 	                for(int k = 0 ; k < punkty_otoczki.size()-1 ; k++){
 	                    if(czy_przecinaja(punkty_otoczki.get(k),punkty_otoczki.get(k+1),
-	                    		new PointAlfa(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
-	                    		new PointAlfa(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
+	                    		new Point(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
+	                    		new Point(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
 	                    {
 	                        ile++;
 	                    }
 
 	                    if(czy_przecinaja(punkty_otoczki.get(punkty_otoczki.size()-1),punkty_otoczki.get(0),
-	                    		new PointAlfa(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
-	                    		new PointAlfa(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
+	                    		new Point(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
+	                    		new Point(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
 	                    {
 	                        ile++;
 	                    }
@@ -886,7 +886,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	}
 	
-	private Polygon getPolygonOnPoints(Vector <PointAlfa> v){
+	private Polygon getPolygonOnPoints(Vector <Point> v){
 		Polygon result = new Polygon();
 		for(int i = 0 ; i < v.size() ; ++i){
 			result.addPoint(v.get(i).x, v.get(i).y);
@@ -895,14 +895,14 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return result;
 	}
 	
-	private class PointAlfa extends Point{
+	private class Point extends Point{
 		
-		public PointAlfa(int xx, int yy){
+		public Point(int xx, int yy){
 			x = xx;
 			y = yy;
 		}
 		
-		public PointAlfa(float x1, float y1) {
+		public Point(float x1, float y1) {
 			x = (int)x1;
 			y = (int)y1;
 		}
@@ -922,12 +922,12 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		}
 	}
 	
-	private int skret(Stack<PointAlfa> S,PointAlfa p3){
-		PointAlfa p2;
-		PointAlfa p1;
+	private int skret(Stack<Point> S,Point p3){
+		Point p2;
+		Point p1;
 
-		p2 = (PointAlfa) S.pop();
-		p1= (PointAlfa) S.pop();
+		p2 = (Point) S.pop();
+		p1= (Point) S.pop();
 
 		if (wyznacznik(p1,p2,p3)>=0){
 			return 0;
@@ -936,7 +936,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		}
 	}
 	
-	private double wyznacznik(PointAlfa pierwszy,PointAlfa drugi,PointAlfa trzeci){
+	private double wyznacznik(Point pierwszy,Point drugi,Point trzeci){
 	    double det1,det2,det;
 	    det1 = (double)(pierwszy.x * drugi.y) + (double)(drugi.x * trzeci.y) + (double)(trzeci.x * pierwszy.y);
 	    det2 = (double)(trzeci.x * drugi.y) + (double)(pierwszy.x * trzeci.y) + (double)(drugi.x * pierwszy.y);
@@ -944,7 +944,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	    return det;
 	}
 	
-	float pole_wielokata(Vector <PointAlfa> p){
+	float pole_wielokata(Vector <Point> p){
 	    int suma = 0;
 	    for(int i = 0 ; i < p.size()-1 ; i++)
 	    {
@@ -955,7 +955,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	    return (float) 0.5*suma;
 	}
 	
-	private boolean czy_przecinaja(PointAlfa p1,PointAlfa p2,PointAlfa p3,PointAlfa p4){
+	private boolean czy_przecinaja(Point p1,Point p2,Point p3,Point p4){
 	    double d1,d2,d3,d4;
 	    d1 = wyznacznik(p3,p4,p1);
 	    d2 = wyznacznik(p3,p4,p2);
@@ -969,7 +969,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	    int p = 0;
 	    for(int i = 0 ; i < nPolygons ; i++){
 	        for(int j = 0 ; j < polygons[i].npoints ; j++){
-	            if(sprawdz_punkt(ot,new PointAlfa(polygons[i].xpoints[j], polygons[i].ypoints[j]))){
+	            if(sprawdz_punkt(ot,new Point(polygons[i].xpoints[j], polygons[i].ypoints[j]))){
 	                p++;
 	                break;
 	            }
@@ -983,7 +983,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 
 	}
 	
-	private boolean sprawdz_punkt(Polygon w,PointAlfa p){
+	private boolean sprawdz_punkt(Polygon w,Point p){
 		int i,j;
 	    boolean c = false;
 	    for(i = 0, j = w.npoints-1 ; i < w.npoints ; j = i++)
@@ -1022,41 +1022,15 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		      return nint(Math.exp(logFactorial(n) - logFactorial(k) - logFactorial(n-k)));
 		   }
 		}*/
-	private class PointAlfa extends Point{
-		
-		public PointAlfa(int xx, int yy){
-			x = xx;
-			y = yy;
-		}
-		
-		public PointAlfa(float x1, float y1) {
-			x = (int)x1;
-			y = (int)y1;
-		}
-
-		double alfa;
-		int d;
-		public void licz_alfa(){
-			this.d = Math.abs(this.x) + Math.abs(this.y);
-		    if(this.x < 0)
-		    {
-		        this.alfa = 2 - ((float)this.y/(float)this.d);
-		    }
-		    else
-		    {
-		        this.alfa = ((float)this.y/(float)this.d);
-		    }
-		}
-	}
 	//even newer functions
 	
 	
-	private Vector<PointAlfa> getPointsFromPolygons(PolygonSides p[]){
-		Vector<PointAlfa> t = new Vector<PointAlfa>();
+	private Vector<Point> getPointsFromPolygons(PolygonSides p[]){
+		Vector<Point> t = new Vector<Point>();
 		
 		for(int i = 0 ; i < p.length ; ++i){
 			for(int j = 0 ; j < p[i].npoints ; ++j){
-				t.add(new PointAlfa(p[i].xpoints[j], p[i].ypoints[j]));
+				t.add(new Point(p[i].xpoints[j], p[i].ypoints[j]));
 			}
 		}
 
@@ -1065,11 +1039,11 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	
 	private Graham grah;
 	private class Graham{
-		  PointAlfa p[];
+		  Point p[];
 		  int n;
 
-		  public Graham(Vector<PointAlfa> points){
-			  p = new PointAlfa[points.size()];
+		  public Graham(Vector<Point> points){
+			  p = new Point[points.size()];
 			  n = points.size();
 			  for(int i = 0 ; i < p.length ; ++i){
 				  p[i] = points.get(i);
@@ -1095,14 +1069,14 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		    return ch;
 		  }
 
-		  private int Area (PointAlfa p0, PointAlfa p1, PointAlfa p2) {
+		  private int Area (Point p0, Point p1, Point p2) {
 			    int dx1 = p1.x - p0.x, dy1 = p1.y - p0.y;
 			    int dx2 = p2.x - p0.x, dy2 = p2.y - p0.y;
 			    return dx1 * dy2 - dx2 * dy1;
 		  }
 
 		  void SwapPoints (int i, int j) {
-		    PointAlfa tmp;
+		    Point tmp;
 		    tmp = p[i]; p[i] = p[j]; p[j] = tmp;
 		  }
 
@@ -1126,7 +1100,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	}	
 	
 	
-	private PolygonSides getPolyByPoint(PointAlfa point){
+	private PolygonSides getPolyByPoint(Point point){
 		for(int i = 0 ; i < wwotoczce.size(); ++i){
 			for(int j = 0 ; j < wwotoczce.get(i).npoints ; ++j){
 				if(wwotoczce.get(i).xpoints[j] == point.x && wwotoczce.get(i).ypoints[j] == point.y){
@@ -1138,7 +1112,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return null;
 	}
 	
-	private int getPointIndexOnPoly(PointAlfa point, PolygonSides ps){
+	private int getPointIndexOnPoly(Point point, PolygonSides ps){
 		for(int i = 0 ; i < ps.npoints ; ++i){
 			if((point.x == ps.xpoints[i]) && (point.y == ps.ypoints[i])){
 				return i;
@@ -1150,139 +1124,159 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	
 	private void printSides(PolygonSides ot){
 		for(int i = 0 ; i < ot.sides.size()  ; ++i){
-	    	System.out.println("Krawedz "+i+": x1="+ot.sides.get(i).x1+";x2="+ot.sides.get(i).x2+";y1="+ot.sides.get(i).y1+";y2="+ot.sides.get(i).y2);
+			printSide(ot.sides.get(i) , i);
 	    }
 	}
 	
-	private void ulepsz_otoczke(Vector<PointAlfa> w_otoczki,Vector<PointAlfa> punkty_rozw){
+	private void printSide(Line2D.Float l, int i){
+		System.out.println("Krawedz "+i+": x1="+l.x1+";y1="+l.y1+";x2="+l.x2+";y2="+l.y2);
+	}
+	
+	private Polygon getPolygonOnPoints(Vector<Point> v){
+		Polygon result = new Polygon();
+		for(int i = 0 ; i < v.size() ; ++i){
+			result.addPoint(v.get(i).x, v.get(i).y);
+		}
+		return result;
+	}
+	
+	private void ulepsz_otoczke(Vector<Point> w_otoczki,Vector<Point> punkty_rozw){
 		System.out.println("ulepszam otoczke");
 	    PolygonSides stara_otoczka = new PolygonSides(theAnswer.xpoints, theAnswer.ypoints, theAnswer.npoints);
 	    PolygonSides nowa_otoczka = new PolygonSides(theAnswer.xpoints, theAnswer.ypoints, theAnswer.npoints);
 	    PolygonSides tempP1, tempP2;
 	    boolean flaga = true;
-	    PointAlfa center = PolygonCenterOfMass(theAnswer);
-	    
+	    Point center = PolygonCenterOfMass(theAnswer);
+	    tiniestArea = this.pole_wielokata(theAnswer);
 	    while(flaga){
 	    	flaga = false;
-		    for(int i = 0 ; i < stara_otoczka.sides.size(); ++i){
-		    	tempP1 = getPolyByPoint(new PointAlfa (stara_otoczka.sides.get(i).x1, stara_otoczka.sides.get(i).y1));
+		    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
+		    	tempP1 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x1, (int)nowa_otoczka.sides.get(i).y1));
 		    	tempP1.setSides();
-		    	tempP2 = getPolyByPoint(new PointAlfa (stara_otoczka.sides.get(i).x2, stara_otoczka.sides.get(i).y2));
+		    	tempP2 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2));
 		    	tempP2.setSides();
 		    	if(tempP1 == null || tempP2 == null){
 		    		System.out.println("AAAAAA!");
 		    		return;
 		    	}
 		    	int pIndex1, pIndex2;
-		    	
+		    	Point point1 = new Point ((int)nowa_otoczka.sides.get(i).x1,(int) nowa_otoczka.sides.get(i).y1);
+		    	Point point2 = new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2);
 		    	if(tempP1.Equals(tempP2)){
 		    		//TODO: side on the same poly
-		    		pIndex1 = getPointIndexOnPoly(new PointAlfa (stara_otoczka.sides.get(i).x1, stara_otoczka.sides.get(i).y1), tempP1);
-		    		pIndex2 = getPointIndexOnPoly(new PointAlfa (stara_otoczka.sides.get(i).x2, stara_otoczka.sides.get(i).y2), tempP1);
+		    		pIndex1 = getPointIndexOnPoly(point1, tempP1);
+		    		pIndex2 = getPointIndexOnPoly(point2, tempP1);
 		    		if(pIndex1 == getPointIndex(tempP1, pIndex2, -1) || pIndex1 == getPointIndex(tempP1, pIndex2, 1)){
 		    			
 		    			//Vertex cannot be split
 		    		}else{
-		    			/*System.out.println("Npoints:"+stara_otoczka.npoints);
+		    			/*System.out.println("Npoints:"+nowa_otoczka.npoints);
 		    			System.out.println("i:"+i);
-		    			System.out.println("x1:"+stara_otoczka.sides.get(i).x1);
-		    			System.out.println("y1:"+stara_otoczka.sides.get(i).y1);
-		    			System.out.println("x2:"+stara_otoczka.sides.get(i).x2);
-		    			System.out.println("y2:"+stara_otoczka.sides.get(i).y2);
+		    			System.out.println("x1:"+nowa_otoczka.sides.get(i).x1);
+		    			System.out.println("y1:"+nowa_otoczka.sides.get(i).y1);
+		    			System.out.println("x2:"+nowa_otoczka.sides.get(i).x2);
+		    			System.out.println("y2:"+nowa_otoczka.sides.get(i).y2);
 		    			System.out.println("pIndex1:"+pIndex1);
 		    			System.out.println("pIndex2:"+pIndex2);*/
-		    			stara_otoczka.sides.remove(i);
+		    			nowa_otoczka.sides.remove(i);
 		    			flaga = true;
 		    			int counter = 0;
-		    			int step;
-		    			if(pIndex1 > pIndex2){
-		    				step = -1;
-		    			}else{
-		    				step = -1;
-		    			}
+		    			int step = -1;
+	
 		    			for(int j = pIndex1 ; j != getPointIndex(tempP1, pIndex2 ,step) ; j = getPointIndex(tempP1, j, step)){
-		    				stara_otoczka.sides.insertElementAt(new Line2D.Float(tempP1.xpoints[j], tempP1.ypoints[j], tempP1.xpoints[getPointIndex(tempP1,j,step)],tempP1.ypoints[getPointIndex(tempP1,j,step)] ), i + counter);
+		    				nowa_otoczka.sides.insertElementAt(new Line2D.Float(tempP1.xpoints[j], tempP1.ypoints[j], tempP1.xpoints[getPointIndex(tempP1,j,step)],tempP1.ypoints[getPointIndex(tempP1,j,step)] ), i + counter);
+		    				nowa_otoczka.setPoints();
+		    				//w_otoczki.insertElementAt(new Point(tempP1.xpoints[j], tempP1.ypoints[j]), i + counter);
+		    				punkty_rozw.remove(new Point(tempP1.xpoints[j], tempP1.ypoints[j]));
 		    				++counter;
 		    			}
 		    		}
 		    	}else{
-		    		
-		    		//flaga = true;
-		    		//TODO: side between polys
+		    		Line2D.Float tempLine = null;
+		    		Line2D.Float tempLine2 = null;
+		    		int counter = 0;
+		    		for(int j=0 ; j < punkty_rozw.size() ; ++j){
+		    			boolean intersects = false;
+		    			//System.out.println("Szukam1");
+		    			tempLine = new Line2D.Float(point1, punkty_rozw.get(j));
+		    			tempLine2 = new Line2D.Float(punkty_rozw.get(j), point2);
+		    			//System.out.println("Sprawdzam"+tempLine.x1+" "+tempLine.y1+" "+tempLine.x2+" "+tempLine.y2);
+		    			for(int k = 0 ; k < wwotoczce.size() ; ++k){
+		    				//System.out.println("Szukam2");
+		    				if(lineIntersectsPoly(tempLine, wwotoczce.get(k)) || lineIntersectsPoly(tempLine2, wwotoczce.get(k))){
+		    					intersects = true;
+		    					break;
+		    				}
+		    			}
+		    			if(!intersects){
+		    				//String debug = "usuwam "+nowa_otoczka.sides.get(i).x1+" "+nowa_otoczka.sides.get(i).y1+" "+nowa_otoczka.sides.get(i).x2+" "+nowa_otoczka.sides.get(i).y2;
+	    					nowa_otoczka.sides.remove(i+counter);
+	    					nowa_otoczka.sides.insertElementAt(tempLine2, i+counter);
+	    					nowa_otoczka.sides.insertElementAt(tempLine, i+counter);
+	    					counter++;
+
+			    			stara_otoczka.setFromSides(nowa_otoczka.sides);
+			    			//System.out.println(debug);
+			    			punkty_rozw.remove(j);
+			    			flaga = true;
+			    			break;
+		    			}
+		    		}
 		    	}
 		    }
-	    }
-	    
-	    theAnswer.setFromSides(stara_otoczka.sides);
-	    generated = true;
-
-	    /*
-	    for(it = 0 ; it < w_otoczki.size() ; it++)
-	    {
-	        for(it2 = 0 ; it2 < punkty_rozw.size() ; it2++)
-	        {
-	            if((w_otoczki.get(it).x == punkty_rozw.get(it2).x) && (w_otoczki.get(it).y == punkty_rozw.get(it2).y))
-	            {
-	            	punkty_rozw.remove(it2);
-	                break;
-	            }
-	        }
-	    }
-	    
-	    
-
-	    while((punkty_rozw.size() > 0) && flaga){
-		    oit = 0;//krawedzie nowej otoczki
-		    ile_insertow = 0;
-		    ile = nowa_otoczka.sides.size();
-		    System.out.println("sides"+ile);
-		    licznik = nowa_otoczka.sides.size()*punkty_rozw.size();
-		    for(int i = 1 ; i <= ile  ; i++){
-		        if(punkty_rozw.size() > 0)
-		        {
-		            for(it3 = 0 ; it3 < punkty_rozw.size() ; it3++)
-		            {
-		            	System.out.println("oit"+oit);
-		            	System.out.println("i"+i);
-		            	System.out.println("ile_insertow"+ile_insertow);
-		                usuwany = it3;
-		                temp = new PointAlfa(punkty_rozw.get(usuwany).x, punkty_rozw.get(usuwany).y);
-		                temp1 = new PointAlfa((int)nowa_otoczka.sides.get(oit).x1,(int)nowa_otoczka.sides.get(oit).y1);
-		                temp2 = new PointAlfa((int)nowa_otoczka.sides.get(oit).x2,(int)nowa_otoczka.sides.get(oit).y2);
-	
-		                nowa_otoczka.sides.remove(oit);
-		                nowa_otoczka.sides.insertElementAt(new Line2D.Float((float)temp.x,(float)temp.y, (float)temp2.x, (float)temp2.y), oit);
-		                nowa_otoczka.sides.insertElementAt(new Line2D.Float((float)temp1.x, (float)temp1.x,(float)temp.x, (float)temp.y), oit);
-		                nowa_otoczka.setFromSides(nowa_otoczka.sides);
-		                PolygonSides temp_otoczka = new PolygonSides();
-		                temp_otoczka.setFromSides(nowa_otoczka.sides);
-		                if(sprawdz(temp_otoczka,wwotoczce)){
-		                	System.out.println("Super");
-		                    ile_insertow++;
-		                    punkty_rozw.remove(usuwany);
-		                    stara_otoczka = new PolygonSides(nowa_otoczka.xpoints, nowa_otoczka.ypoints, nowa_otoczka.npoints);
-		                    theAnswer = new PolygonSides(nowa_otoczka.xpoints, nowa_otoczka.ypoints, nowa_otoczka.npoints);
-		                }else{
-		                	System.out.println("Niesuper");
-		                    licznik--;
-		                    nowa_otoczka = new PolygonSides(stara_otoczka.xpoints, stara_otoczka.ypoints, stara_otoczka.npoints);
-		                }
-		                oit = i+ile_insertow;
-		            }
-		        }
-	
+		    
+		    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
+		    	for(int j = 0 ; j < nowa_otoczka.sides.size() ; ++j){
+		    		if(i == j){
+		    			continue;
+		    		}else if(haveSamePoints(nowa_otoczka.sides.get(i), nowa_otoczka.sides.get(j))){
+		    			Point pTemp1 = new Point((int)nowa_otoczka.sides.get(i).getX1(), (int)nowa_otoczka.sides.get(i).getY1());
+		    			Point pTemp2 = new Point((int)nowa_otoczka.sides.get(i).getX2(), (int)nowa_otoczka.sides.get(i).getY2());
+		    			boolean containsPoint = false;
+		    			for(int k = 0 ; k < nowa_otoczka.sides.size() ; ++k){
+		    				if(k == i && k == j){
+		    					continue;
+		    				}else{
+		    					if(haveCommonPoint(nowa_otoczka.sides.get(k) , new Line2D.Float(pTemp1, pTemp2))){
+		    						containsPoint = true;
+		    					}
+		    				}
+		    			}
+		    			if(!containsPoint){
+			    			printSide(nowa_otoczka.sides.get(i), i);
+			    			nowa_otoczka.sides.remove(i);
+			    			printSide(nowa_otoczka.sides.get((i > j ? j : j-1)), (i > j ? j : j-1));
+			    			nowa_otoczka.sides.remove(i > j ? j : --j);
+			    			nowa_otoczka.setPoints();
+			    			--i;
+			    			System.out.println("usuwam");
+		    			}
+		    		}
+		    	}
 		    }
-		    if(licznik <= 0) flaga = false;
+		    nowa_otoczka.setPoints();
+		    stara_otoczka.setFromSides(nowa_otoczka.sides);
+		    
 	    }
-
-	    theAnswer.reset();
+	    
 	    theAnswer.setFromSides(nowa_otoczka.sides);
+	    	printSides(theAnswer);
 	    generated = true;
-	    */
-		//TODO
-		
-		
 	    System.out.println("koncze otoczke");
+	}
+	
+	private boolean haveSamePoints(Line2D.Float line1, Line2D.Float line2){
+		if((line1.getP1().equals(line2.getP1()) && line1.getP2().equals(line2.getP2())) || (line1.getP1().equals(line2.getP2()) && line1.getP2().equals(line2.getP1()))){
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean haveCommonPoint(Line2D.Float line1, Line2D.Float line2){
+		if(line1.getP1().equals(line2.getP1()) || line1.getP2().equals(line2.getP2()) || line1.getP1().equals(line2.getP2()) || line1.getP2().equals(line2.getP1())){
+			return true;
+		}
+		return false;
 	}
 	
 	private boolean sprawdz(PolygonSides n_otoczka,Vector<PolygonSides> spr_w){
@@ -1341,6 +1335,10 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 			
 		}
 
+		public void setPoints(){
+			this.setFromSides(this.sides);
+		}
+		
 		public void setSides(){
 			sides = new Vector<Line2D.Float>();
 			for(int i = 1 ; i < npoints ; ++i){
@@ -1356,6 +1354,37 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 				this.addPoint((int)s.get(i).x1, (int) s.get(i).y1);
 			}
 		}
+	}
+	
+	float pole_wielokata(Vector <Point> p){
+	    int suma = 0;
+	    for(int i = 0 ; i < p.size()-1 ; i++)
+	    {
+	        suma += (p.get(i).x * p.get(i+1).y - p.get(i+1).x * p.get(i).y);
+	    }
+	    suma += (p.get(p.size()-1).x * p.get(0).y - p.get(0).x * p.get(p.size()-1).y);
+
+	    return (float) 0.5*suma;
+	}
+	
+	float pole_wielokata(Polygon p){
+	    int suma = 0;
+	    for(int i = 0 ; i < p.npoints-1 ; i++)
+	    {
+	        suma += (p.xpoints[i] * p.ypoints[i+1] - p.xpoints[i+1] * p.ypoints[i]);
+	    }
+	    suma += (p.xpoints[p.npoints-1] * p.ypoints[0] - p.xpoints[0] * p.ypoints[p.npoints-1]);
+
+	    return (float) 0.5*suma;
+	}
+	
+	private Vector<Point> stripPointsFromPolygon(Vector<Point> points, Polygon p){
+		for(int j = 0 ; j < p.npoints ; ++j){
+			points.remove(new Point(p.xpoints[j], p.ypoints[j]));
+			//System.out.println("Removing");
+		}
+		
+		return points;
 	}
 }
 
