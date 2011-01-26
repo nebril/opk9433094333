@@ -72,8 +72,8 @@ public class gen extends Applet implements ActionListener{
 	 */
 	private void drawPoints()
 	{
-		int sideLx = nMaxX / (int)(0.5 * nPolygons);
-		int sideLy = nMaxY / (int)(0.5 * nPolygons);
+		int sideLx = nMaxX / (int)(0.7 * nPolygons);
+		int sideLy = nMaxY / (int)(0.7 * nPolygons);
 		arXVals0[0] = rn.nextInt(nMaxX-sideLx);
 		arYVals0[0] = rn.nextInt(nMaxY-sideLy);
 		for( int i = 1; i < nVertices; i++ )

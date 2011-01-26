@@ -1,7 +1,6 @@
-import java.util.Random;
-import java.util.Stack;
 import java.awt.*;
 import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
 import java.awt.geom.Line2D.Float;
 import java.applet.*;
 import java.awt.event.*;
@@ -21,41 +20,67 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	private static final long serialVersionUID = 1L;
 	static PolygonSides polygons[];
 	static PolygonSides theAnswer;
+	static PolygonSides ultimateAnswer;
+	static PolygonSides between;
 	static int nPolygons;
 	static int minPolygons;
+	static int choosedPolys;
 	static int nMaxX = 800;
 	static int nMaxY = 600;
 	static Vector<Point> centerPoints = new Vector<Point>();
 	static Vector<Point> allPoints;
+	static long started;
+	static long iterationStart;
+	static long stopAfter = 10000;
 	Boolean re = false;
 	Boolean generated = false;
+	Boolean be = false;
 	int [][] densities;
 	private Vector<Integer> [][] polysInDens;
 	int side;
 	Button generate;
 	Button load;
-	Random randGen = new Random();
+	Checkbox doSteps;
 	int [] test;
 	PolygonSides [] pTest;
+	Image backbuffer;
+	Graphics backg;
+	Label time;
+
 	
 	public void init(){
-		resize(1000,800);
+		resize(1000,700);
 		setLayout(null);
 		generate = new Button("Generuj");
 		load = new Button("Otworz plik");
+		doSteps = new Checkbox("Krokowo?");
+		time = new Label("Czas wykonania");
+		
 		
 		generate.setBounds(900, 20, 100, 30);
 		load.setBounds(900, 100, 100, 30);
+		doSteps.setBounds(900, 150, 100, 30);
+		time.setBounds(900,200,100,30);
 		add(generate);
 		add(load);
+		add(doSteps);
+		add(time);
 		
 		generate.addActionListener(this);
 		load.addActionListener(this);
 		addMouseMotionListener(this); 
+		
+		
+		
 		//nPolygons = rn.nextInt(25) + 5;
 		//nPolygons = 7;//polygon count +1
 		
 		new Thread(this, "Interface").start();
+		
+		backbuffer = createImage( 1000, 700 );
+	      backg = backbuffer.getGraphics();
+	      backg.setColor( Color.white );
+
 
 	} // init()
 	
@@ -72,25 +97,76 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	}
 	
 	private void runCalc(){
-		grah = new Graham(getPointsFromPolygons(pTest));
-		theAnswer = grah.GrahamScan();
+		tiniestArea = Integer.MAX_VALUE;
 		
-		PolygonSides [] t = new PolygonSides [1];
-		t[0] = theAnswer;
-		theAnswer.setSides();
-		
-		//theAnswer.sides.remove(0);
-		//theAnswer.setFromSides(theAnswer.sides);
-		ulepsz_otoczke(getPointsFromPolygons(t), stripPointsFromPolygon(getPointsFromPolygons(pTest), theAnswer));
-		generated = true;
+		combGen = new CombinationGenerator(pTest.length, minPolygons);
+		int [] indices;
+		PolygonSides instance[];
+		ultimateAnswer = new PolygonSides();
+		between = new PolygonSides();
+		while(combGen.hasMore()){
+			System.out.println("Nowa kombinacja!");
+			indices = combGen.getNext();
+			instance = new PolygonSides[minPolygons];
+			
+			for(int i = 0 ; i < minPolygons ; ++i){
+				instance[i] = pTest[indices[i]];
+			}
+			
+			generated = false;
+			wwotoczce = new Vector<PolygonSides>();
+			for(int i = 0 ; i < instance.length ; ++i){
+				wwotoczce.add(instance[i]);
+				wwotoczce.get(i).setSides();
+			}
+			
+			theAnswer = new PolygonSides();
+			
+			grah = new Graham(getPointsFromPolygons(instance));
+			theAnswer = grah.GrahamScan();
+			theAnswer.setSides();
+			/*between.setFromSides(theAnswer.sides);
+			be = true;
+			try {
+				System.in.read();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}*/
+			PolygonSides [] t = new PolygonSides [1];
+			t[0] = theAnswer;
+			theAnswer.setSides();
+			
+			ulepsz_otoczke(getPointsFromPolygons(t), stripPointsFromPolygon(getPointsFromPolygons(instance), theAnswer));
+			if(this.validatePoly(theAnswer)){
+				if(pole_wielokata(theAnswer) < tiniestArea){
+					ultimateAnswer.setFromSides(theAnswer.sides);
+					tiniestArea = pole_wielokata(theAnswer);
+				}
+				System.out.println("Zatwierdzam");
+			}else{
+				System.out.println("Niewali");
+			}
+			/*between.setFromSides(theAnswer.sides);
+			be = true;
+			try {
+				System.in.read();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}*/
+			generated = true;
+		}
+		time.setText((System.currentTimeMillis() - this.started) + "ms");
 	}
 	
-	public void paint(Graphics g){
-		g.clearRect(0, 0, nMaxX, nMaxY);
+	public void update(Graphics g){
+		//backg.fillRect(0, 0, 1000, 700);
+		backg.clearRect(0, 0, nMaxX, nMaxY);
 		if(re){
 			for(int i = 0 ; i < nPolygons ; i++){
-				g.setColor(Color.black);
-				g.drawPolygon(polygons[i].xpoints, polygons[i].ypoints, polygons[i].npoints);
+				backg.setColor(Color.black);
+				backg.drawPolygon(polygons[i].xpoints, polygons[i].ypoints, polygons[i].npoints);
 				
 				//g.fillOval(centerPoints.get(i).x, centerPoints.get(i).y, 10, 10);
 			}
@@ -98,11 +174,21 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 				g.drawOval(PolygonCenterOfMass(wwotoczce.get(i)).x, PolygonCenterOfMass(wwotoczce.get(i)).y, 10, 10);
 			}*/
 		}
+		if(be){
+			backg.setColor(Color.blue);
+			backg.drawPolygon(between.xpoints, between.ypoints, between.npoints);
+		}
 		if(generated){
-			g.setColor(Color.red);
-			g.drawPolygon(theAnswer.xpoints, theAnswer.ypoints, theAnswer.npoints);
+			backg.setColor(Color.red);
+			backg.drawPolygon(ultimateAnswer.xpoints, ultimateAnswer.ypoints, ultimateAnswer.npoints);
 			//g.drawLine((int)tempLine.x1, (int)tempLine.y1, (int)tempLine.x2, (int)tempLine.y2);
 		}
+		
+		g.drawImage( backbuffer, 0, 0, this );
+	}
+	
+	public void paint(Graphics g){
+		update(g);
 	} // paint()
 	
 	public void actionPerformed(ActionEvent evt) {
@@ -122,13 +208,11 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		if(re == false){
 			return;
 		}
+		this.started = System.currentTimeMillis();
+		System.out.println("Starting");
 		setDensityAreas();
 		setClosePolygons();
-		wwotoczce = new Vector<PolygonSides>();
-		for(int i = 0 ; i < pTest.length ; ++i){
-			wwotoczce.add(pTest[i]);
-			wwotoczce.get(i).setSides();
-		}
+		System.out.println("Starting thread");
 		 new Thread(
             new Runnable() {
                 public void run() {
@@ -141,12 +225,9 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		//TODO
 		
 	}
-	private PolygonSides getConcavedPoly(PolygonSides poly, int indexesIn[]){
-		
-		
-		
-		return poly;
-	}
+
+	CombinationGenerator combGen;
+	
 	private void setClosePolygons(){
 		int denseI = 0, denseJ = 0;
 		int maxDens = Integer.MIN_VALUE;
@@ -160,25 +241,25 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 			}
 		}
 		
-		PolygonSides[] result = new PolygonSides[minPolygons];
+		PolygonSides[] result = new PolygonSides[choosedPolys];
 		Vector <Point> areas = new Vector <Point>();
 		areas.add(new Point(denseI,denseJ));
 		int p = densities[denseI][denseJ];
-		if(densities[denseI][denseJ] > minPolygons){
+		if(densities[denseI][denseJ] > choosedPolys){
 
 		}else{
 			int currentI = denseI, currentJ = denseJ;
 			//System.out.println(currentI+"x"+currentJ);
-			while(p < minPolygons){
+			while(p < choosedPolys){
 				int itemp = currentI, jtemp = currentJ;
 				int maxDens2 = Integer.MIN_VALUE;
+				boolean changed = false;
 					
 					if( currentJ != 0 && densities[currentI][currentJ-1] > maxDens2 && !areas.contains(new Point(currentI,currentJ-1))){
 						maxDens2 = densities[currentI][currentJ-1];
 						itemp = currentI;
 						jtemp = currentJ - 1;
 					}
-
 					if(currentJ != side -1 && densities[currentI][currentJ+1] > maxDens2 && !areas.contains(new Point(currentI,currentJ+1))){
 						maxDens2 = densities[currentI][currentJ+1];
 						itemp = currentI;
@@ -194,9 +275,13 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 						itemp = currentI + 1;
 						jtemp = currentJ;
 					}
+					
+					if(currentI == itemp && currentJ == jtemp){
+						itemp = denseI;
+						jtemp = denseJ;
+					}
 				currentI = itemp;
 				currentJ = jtemp;
-
 				p += densities[currentI][currentJ];
 				areas.add(new Point(currentI,currentJ));
 			}
@@ -215,7 +300,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		
 		test = orderPolys(test);
 		
-		for(int i = 0 ; i < minPolygons ; ++i){
+		for(int i = 0 ; i < choosedPolys ; ++i){
 			pTest[i] = polygons[test[i]];
 		}
 	}
@@ -254,11 +339,18 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return indexes;
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void setDensityAreas(){
 		if(nPolygons == 4){
 			side = 3;
-		}else{
+		}else if(nPolygons <= 9){
 			side = 4;
+		}else if(nPolygons <= 15){
+			side = 5;
+		}else if(nPolygons <= 20){
+			side = 6;
+		}else{
+			side = 7;
 		}
 		densities = new int[side][side];
 
@@ -281,15 +373,9 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 				}
 			}
 		}
-		
-		/*for(int i = 0 ; i < side ; ++i){
-			for(int j = 0 ; j < side ; ++j){
-				System.out.println(i+"x"+j+" density: "+densities[i][j]);
-			}
-		}*/
 	}
 	
-	private PolygonSides joinPolygons(PolygonSides p1, PolygonSides p2){
+	/*private PolygonSides joinPolygons(PolygonSides p1, PolygonSides p2){
 		Line2D.Float bound = new Line2D.Float(PolygonCenterOfMass(p1), PolygonCenterOfMass(p2));
 		int p1Point1 = 0, p1Point2 = 0, p2Point1 = 0, p2Point2 = 0, temp;
 		float maxDistSq = Integer.MIN_VALUE;
@@ -391,7 +477,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		result.addPoint(p2.xpoints[p2Point2], p2.ypoints[p2Point2]);
 		
 		return result;
-	}
+	}*/
 	
 	public double UnsignedPolygonArea(PolygonSides poly)
 	{
@@ -432,9 +518,9 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return res;
 	}
 	
-	private float getLineLengthSq(Line2D.Float l){
+	/*private float getLineLengthSq(Line2D.Float l){
 		return (l.x1-l.x2)*(l.x1-l.x2) + (l.y1-l.y2)*(l.y1-l.y2);
-	}
+	}*/
 	
 	private int getPointIndex(PolygonSides poly, int offset, int steps){
 		//System.out.println("Getindex--------");
@@ -489,6 +575,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	        }else{
 	        	minPolygons = nPolygons/2;
 	        }
+	        choosedPolys = nPolygons*3/5;
 	        polygons = new PolygonSides[nPolygons];
 	        wszystkie_krawedzie = new Vector<Line2D.Float>();
 	        allPoints = new Vector<Point>();
@@ -512,114 +599,22 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	        		}
 	        	}
 	        	centerPoints.add(PolygonCenterOfMass(polygons[whichPoly]));
+	        	polygons[whichPoly].setSides();
 	        	
 	        	++whichPoly;
 	        }
 	        generated = false;
+	        be = false;
 	        re = true;
 	}
 	
-	private PolygonSides getPolyOnPolygons(PolygonSides polys[]){
-		System.out.println("length: "+polys.length);
-		int step;
-		int i = 0;
-		for(step = 1 ; step < polys.length ; step *= 2){
-			for(i = 0 ; i + step < polys.length ; i += step + 1){
-				//System.out.println("Joining "+i+" and "+(i+step));
-
-				polys[i] = joinPolygons(polys[i], polys[i+step]);
-			}
-		}
-		for(; i < polys.length ; ++i){
-			polys[0] = joinPolygons(polys[0], polys[i]);
-		}
-		
-		return polys[0];
-	}
-	/*
-	 * Returns four ints - positions of points in two polygons, between which the lines should be drawn.
-	 * result[0] - point in p1 in line1
-	 * result[1] - point in p2 in line1
-	 * result[2] - point in p1 in line2
-	 * result[3] - point in p2 in line2
-	 */
-	private int[] getClosestLinesPositions(PolygonSides p1, PolygonSides p2){
-		int result[] = new int[4];
-		int closePoints[] = getClosestNodesPositions(p1,p2);
-		int minIndex1, minIndex2;
-		Line2D.Float lines[] = new Line2D.Float[9];
-		int indexes[][] = new int[9][2];
-		//int lengthsSquared[] = new int[9];
-		while(true){
-			int minSquaredL1 = Integer.MAX_VALUE, 
-			minSquaredL2 = Integer.MAX_VALUE;
-			minIndex1 = 0;
-			minIndex2 = 0;
-			int k = 0;
-			for(int i = -1 ; i < 2 ; ++i){
-				for(int j = -1 ; j < 2 ; ++j){
-					int index1 = getPointIndex(p1, closePoints[0], i);
-					int index2 = getPointIndex(p2, closePoints[1], j);
-	
-					lines[k] = new Line2D.Float(p1.xpoints[index1], p1.ypoints[index1], p2.xpoints[index2], p2.ypoints[index2]);
-					indexes[k][0] = index1;
-					indexes[k][1] = index2;
-					++k;
-				}
-			}
-			for(int i = 0 ; i < 9 ; ++i){
-				if(lineIntersectsPoly(lines[i], p1) || lineIntersectsPoly(lines[i], p2)){
-					//lengthsSquared[i] = -1;
-				}else{
-					if(getLengthSquared(lines[i]) < minSquaredL1){
-						minIndex1 = i;
-					}else if(getLengthSquared(lines[i]) < minSquaredL2){
-						minIndex2 = i;
-					}
-					//lengthsSquared[i] = getLengthSquared(lines[i]);
-				}
-			}
-			if(minSquaredL1 == Integer.MAX_VALUE || minSquaredL2 == Integer.MAX_VALUE){
-				System.out.println("Error: getClosestLinesPositions");
-			}else{
-				break;
-			}
-		}
-		
-		result[0] = indexes[minIndex1][0];
-		result[1] = indexes[minIndex1][1];
-		result[2] = indexes[minIndex2][0];
-		result[3] = indexes[minIndex2][1];
-		return result;
-	}
-	
-	private int[] getClosestNodesPositions(PolygonSides p1, PolygonSides p2){
-		Point point1, point2;
-		double minDistance = Double.MAX_VALUE;
-		int result[] = new int[2];
-		for(int i = 0 ; i < p1.npoints ; ++i){
-			point1 = new Point(p1.xpoints[i], p1.ypoints[i]);
-			for(int j = 0 ; j < p2.npoints ; ++j){
-				point2 = new Point(p2.xpoints[j], p2.ypoints[j]);
-				if(point1.distance(point2) < minDistance){
-					minDistance = point1.distance(point2);
-					result[0] = i;
-					result[1] = j;
-				}
-			}
-		}
-		return result;
-	}
 	
 	private boolean lineIntersectsPoly(Line2D line, PolygonSides poly){
-		Line2D polyLine;
-		for(int i = 1 ; i <poly.npoints ; ++i){
-			polyLine = new Line2D.Float();
-			polyLine.setLine(poly.xpoints[i-1], poly.ypoints[i-1] , poly.xpoints[i], poly.ypoints[i]);
-			if(lineCommonPoint(line, polyLine)){
+		for(int i = 0 ; i < poly.sides.size() ; ++i){
+			if(lineCommonPoint(line, poly.sides.get(i))){
 				continue;
 			}
-			if(line.intersectsLine(polyLine)){
+			if(line.intersectsLine(poly.sides.get(i))){
 				return true;
 			}
 		}
@@ -648,383 +643,12 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	
 	
 	//new functions
-	private boolean searchMore = false;
-	private int countN;
-	private int count2;
+
 	private float tiniestArea = Integer.MAX_VALUE;
-	private int startx;
-	private int starty;
+
 	private Vector <Line2D.Float> wszystkie_krawedzie;
 	private Vector<PolygonSides> wwotoczce;
-	private Vector<Point> punkty_rozwiazania = new Vector<Point>();
-	/*
-	
-	private void szukaj_otoczki(int [] polys){
-	
-	    searchMore = true;
-	    countN = 1;
-	    Polygon best;
-	    tiniestArea = Integer.MAX_VALUE;
-	    int n = nPolygons;
-	    int k = (int) Math.ceil((double)n/(double)2);
-	    int comb[] = polys;
-	    
-	    sprawdz_otoczke(comb,k);
-	    /*while(searchMore && (k<nPolygons))
-        {
-	    	count2 = k;
-            for(int i = 0; i <= k ; i++)
-            {
-                comb[i] = i;
-            }
-            sprawdz_otoczke(comb,k);
-            int combCount = 0;
-            while((comb = next_comb(comb,k,n)) != null && combCount < (bin.binomial(n, k))){
-                sprawdz_otoczke(comb,k);
-                combCount++;
-            }
-            k++;
-        }*/
-	/*}
-	
-	private int[] next_comb(int comb[], int k, int n){
-		//System.out.println(i);
-		int i = k - 1;
-		System.out.println("i:"+i);
-		++comb[i];
-		while ((i >= 0) && (comb[i] >= n - k + 1 + i)) {
-			System.out.println("i:"+i);
-			++comb[i];
-			--i;
-		}
 
-		if (comb[0] > n - k)
-			return null;
-
-		for (i = i + 1; i < k; ++i)
-			comb[i] = comb[i - 1] + 1;
-
-		return comb;
-	}
-	
-	private void sprawdz_otoczke(int comb[],int k){
-		countN++;
-	    //cout << licznik << "\r";
-	    Vector<Polygon> checked = new Vector<Polygon>();
-	    Vector<Point> pointsChecked = new Vector<Point>();
-
-
-	    for(int i = 0 ; i < k ; i++){
-	    	checked.add(polygons[comb[i]]);
-	    }
-	    for(int i = 0 ; i < checked.size() ; i++)
-	    {
-	        for(int j = 0 ; j < checked.get(i).npoints ; j++)
-	        {
-	        	pointsChecked.add(new Point(checked.get(i).xpoints[j],checked.get(i).ypoints[j]));
-	        }
-	    }
-
-	    otoczka(pointsChecked,checked);
-
-	}
-	
-	private void otoczka(Vector<Point> punkty_rozw,Vector<Polygon> spr_w){
-		Point temp;
-	    int startx,starty,ile = 0;
-	    Stack<Point> stos = new Stack<Point>();
-	    Vector <Point> punkty_otoczki = new Vector<Point>();
-	    Vector <Point> tempp = punkty_rozw;
-	    //=================PRZYGOTOWANIE PUNKTOW=================================
-
-	    //znalezienie najnizej polozonego punktu
-	    for(int i = 0 ; i < punkty_rozw.size() ; i++){
-	        if(punkty_rozw.get(i).y > punkty_rozw.get(0).y){
-	            temp = punkty_rozw.get(i);
-	            punkty_rozw.set(0, punkty_rozw.get(i));
-	            punkty_rozw.set(i, temp);
-	        }
-	    }
-
-	    startx = punkty_rozw.get(0).x;           //przypisanie do zmiennych startx/starty wartosci najnizej polozonego punktu
-	    starty = punkty_rozw.get(0).y;
-	    temp = new Point(0,0);
-	    Point t = new Point(0,0);
-	    t.alfa = 0;
-	    punkty_rozw.set(0, t);
-
-
-
-	    //przeliczenie wspolrzednych i wsp alfa wzgledem punktu zerowego
-
-	    for(int i = 1 ; i < punkty_rozw.size() ; i++)
-	    {
-	    	t = new Point(punkty_rozw.get(i).x - startx , starty - punkty_rozw.get(i).y);
-	    	t.licz_alfa();
-	    	punkty_rozw.set(i, t);
-	    }
-
-	    //posortowanie punktow wzgledem wsp alfa
-
-	    for(int i = 0 ; i < punkty_rozw.size()-1 ; i++)
-	    {
-	        for(int j = 1 ; j < punkty_rozw.size()-1 ; j++)
-	        {
-	            if(punkty_rozw.get(j).alfa > punkty_rozw.get(j+1).alfa)
-	            {
-	                temp = punkty_rozw.get(j);
-	                punkty_rozw.set(j,  punkty_rozw.get(j+1));
-	                punkty_rozw.set(j+1, temp);
-	            }
-	        }
-	    }
-
-
-
-	    //===================SZUKANIE OTOCZKI=================================
-
-	    stos.push(punkty_rozw.get(0));          //dodajemy 3 pierwsze punkty z listy na stos
-	    stos.push(punkty_rozw.get(1));
-	    stos.push(punkty_rozw.get(2));
-
-
-	    for (int i=3;i<punkty_rozw.size();i++){                 //dopoki przejscie do nastepnego punkty z listy powoduje skret w prawo
-			while(skret( (Stack<Point>) stos.clone(),punkty_rozw.get(i))==1)
-			{
-		        stos.pop();                                         //usuwamy wierzcholek ze szczytu stosu
-		    }
-		    stos.push(punkty_rozw.get(i));                          //jesli mamy skret w lewo, dodajemy punkt do stosu
-	    }
-
-
-	    while(!(stos.empty()))                                  //przerzucamy punkty ze stosu do wektora punkty_otoczki
-	    {
-	        punkty_otoczki.add((Point) stos.pop());
-	    }
-
-	                                                            //przywracamy wszystkim punktom pierwotne wartosci
-	    punkty_otoczki.set(punkty_otoczki.size()-1, new Point(startx,starty));
-
-
-	    for(int i = 0 ; i < punkty_otoczki.size()-1 ; i++){
-	        punkty_otoczki.set(i, new Point(punkty_otoczki.get(i).x + startx, starty - punkty_otoczki.get(i).y));
-	    }
-
-	    System.out.println("Pole: "+pole_wielokata(punkty_otoczki));
-	    System.out.println("Pole male: "+tiniestArea);
-	    if(pole_wielokata(punkty_otoczki) < tiniestArea){
-	    	System.out.println("Tajni");
-	        for(int m = 0 ; m < wszystkie_krawedzie.size() ; m++){
-	                for(int k = 0 ; k < punkty_otoczki.size()-1 ; k++){
-	                    if(czy_przecinaja(punkty_otoczki.get(k),punkty_otoczki.get(k+1),
-	                    		new Point(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
-	                    		new Point(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
-	                    {
-	                        ile++;
-	                    }
-
-	                    if(czy_przecinaja(punkty_otoczki.get(punkty_otoczki.size()-1),punkty_otoczki.get(0),
-	                    		new Point(wszystkie_krawedzie.get(m).x1,wszystkie_krawedzie.get(m).y1),
-	                    		new Point(wszystkie_krawedzie.get(m).x2,wszystkie_krawedzie.get(m).y2)))
-	                    {
-	                        ile++;
-	                    }
-	                }
-	            }
-
-	        if(ile > 0){
-	        	System.out.println("Tu tez!");
-	            ile = 0;
-	        }else if(sprawdz_wielokaty(getPolygonOnPoints(punkty_otoczki),count2)){
-	        	System.out.println("Tu weszlem!");
-
-	        	//donothing
-	        }else{
-	        	System.out.println("Answeruje");
-	        	generated = true;
-	            theAnswer = new Polygon();
-	            punkty_rozwiazania.clear();
-	            wwotoczce.clear();
-	            tiniestArea = (float) pole_wielokata(punkty_otoczki);
-	            searchMore = false;
-	            for(int i = 0 ; i < punkty_otoczki.size() ; i++){
-	            	theAnswer.addPoint(punkty_otoczki.get(i).x, punkty_otoczki.get(i).y);
-	            }
-	            for(int i = 0 ; i < tempp.size() ; i++)
-	            {
-	                punkty_rozwiazania.add(tempp.get(i));
-	            }
-	            
-	            for(int i = 0 ; i < spr_w.size() ; i++)
-	            {
-	                wwotoczce.add(spr_w.get(i));
-	            }
-	        }
-	        
-	        generated = true;
-            theAnswer = new Polygon();
-            punkty_rozwiazania.clear();
-            wwotoczce.clear();
-            tiniestArea = (float) pole_wielokata(punkty_otoczki);
-            searchMore = false;
-            for(int i = 0 ; i < punkty_otoczki.size() ; i++){
-            	theAnswer.addPoint(punkty_otoczki.get(i).x, punkty_otoczki.get(i).y);
-            }
-            for(int i = 0 ; i < tempp.size() ; i++)
-            {
-                punkty_rozwiazania.add(tempp.get(i));
-            }
-            
-            for(int i = 0 ; i < spr_w.size() ; i++)
-            {
-                wwotoczce.add(spr_w.get(i));
-            }
-
-	    }else{
-	    	System.out.println("Nietajni");
-	    }
-
-	}
-	
-	private Polygon getPolygonOnPoints(Vector <Point> v){
-		Polygon result = new Polygon();
-		for(int i = 0 ; i < v.size() ; ++i){
-			result.addPoint(v.get(i).x, v.get(i).y);
-		}
-		
-		return result;
-	}
-	
-	private class Point extends Point{
-		
-		public Point(int xx, int yy){
-			x = xx;
-			y = yy;
-		}
-		
-		public Point(float x1, float y1) {
-			x = (int)x1;
-			y = (int)y1;
-		}
-
-		double alfa;
-		int d;
-		public void licz_alfa(){
-			this.d = Math.abs(this.x) + Math.abs(this.y);
-		    if(this.x < 0)
-		    {
-		        this.alfa = 2 - ((float)this.y/(float)this.d);
-		    }
-		    else
-		    {
-		        this.alfa = ((float)this.y/(float)this.d);
-		    }
-		}
-	}
-	
-	private int skret(Stack<Point> S,Point p3){
-		Point p2;
-		Point p1;
-
-		p2 = (Point) S.pop();
-		p1= (Point) S.pop();
-
-		if (wyznacznik(p1,p2,p3)>=0){
-			return 0;
-		}else{
-			return 1;
-		}
-	}
-	
-	private double wyznacznik(Point pierwszy,Point drugi,Point trzeci){
-	    double det1,det2,det;
-	    det1 = (double)(pierwszy.x * drugi.y) + (double)(drugi.x * trzeci.y) + (double)(trzeci.x * pierwszy.y);
-	    det2 = (double)(trzeci.x * drugi.y) + (double)(pierwszy.x * trzeci.y) + (double)(drugi.x * pierwszy.y);
-	    det = (double)det1 - (double)det2;
-	    return det;
-	}
-	
-	float pole_wielokata(Vector <Point> p){
-	    int suma = 0;
-	    for(int i = 0 ; i < p.size()-1 ; i++)
-	    {
-	        suma += (p.get(i).x * p.get(i+1).y - p.get(i+1).x * p.get(i).y);
-	    }
-	    suma += (p.get(p.size()-1).x * p.get(0).y - p.get(0).x * p.get(p.size()-1).y);
-
-	    return (float) 0.5*suma;
-	}
-	
-	private boolean czy_przecinaja(Point p1,Point p2,Point p3,Point p4){
-	    double d1,d2,d3,d4;
-	    d1 = wyznacznik(p3,p4,p1);
-	    d2 = wyznacznik(p3,p4,p2);
-	    d3 = wyznacznik(p1,p2,p3);
-	    d4 = wyznacznik(p1,p2,p4);
-	    if((((d1<0.0)&&(d2>0.0)) || ((d1>0.0)&&(d2<0.0))) && (((d3<0.0)&&(d4>0.0)) | ((d3>0.0)&&(d4<0.0)))) return true;
-	    else return false;
-	}
-	
-	private boolean sprawdz_wielokaty(Polygon ot,int k){
-	    int p = 0;
-	    for(int i = 0 ; i < nPolygons ; i++){
-	        for(int j = 0 ; j < polygons[i].npoints ; j++){
-	            if(sprawdz_punkt(ot,new Point(polygons[i].xpoints[j], polygons[i].ypoints[j]))){
-	                p++;
-	                break;
-	            }
-	        }
-	    }
-	    if(p > k) return true;
-	    else
-	    {
-	        return false;
-	    }
-
-	}
-	
-	private boolean sprawdz_punkt(Polygon w,Point p){
-		int i,j;
-	    boolean c = false;
-	    for(i = 0, j = w.npoints-1 ; i < w.npoints ; j = i++)
-	    {
-	        if( ((w.ypoints[i] > p.y) != (w.ypoints[j] > p.y)) && (p.x < ((w.xpoints[j] - w.xpoints[i]) * (p.y-w.ypoints[i]) / (w.ypoints[j] - w.ypoints[i]) + w.xpoints[i]))){
-	            c = !c;
-	        }
-	    }
-	    /*for(int i = 1 ; i < w.npoints ; ++i){
-	    	Line2D.Float temp = 
-	    }*//*
-	    return c;
-
-	}
-	
-	private Binomial bin = new Binomial();
-	
-	private  class Binomial {
-
-		   // return integer nearest to x
-		   long nint(double x) {
-		      if (x < 0.0) return (long) Math.ceil(x - 0.5);
-		      return (long) Math.floor(x + 0.5);
-		   }
-
-		   // return log n!
-		   double logFactorial(int n) {
-		      double ans = 0.0;
-		      for (int i = 1; i <= n; i++)
-		         ans += Math.log(i);
-		      return ans;
-		   }
-
-		   // return the binomial coefficient n choose k.
-		   long binomial(int n, int k) {
-		      return nint(Math.exp(logFactorial(n) - logFactorial(k) - logFactorial(n-k)));
-		   }
-		}*/
-	//even newer functions
-	
-	
 	private Vector<Point> getPointsFromPolygons(PolygonSides p[]){
 		Vector<Point> t = new Vector<Point>();
 		
@@ -1122,6 +746,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		return -1;
 	}
 	
+	@SuppressWarnings("unused")
 	private void printSides(PolygonSides ot){
 		for(int i = 0 ; i < ot.sides.size()  ; ++i){
 			printSide(ot.sides.get(i) , i);
@@ -1132,147 +757,242 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		System.out.println("Krawedz "+i+": x1="+l.x1+";y1="+l.y1+";x2="+l.x2+";y2="+l.y2);
 	}
 	
-	private Polygon getPolygonOnPoints(Vector<Point> v){
-		Polygon result = new Polygon();
-		for(int i = 0 ; i < v.size() ; ++i){
-			result.addPoint(v.get(i).x, v.get(i).y);
-		}
-		return result;
+	private void printCenter(Line2D.Float l){
+		Point t = getLineCenter(l);
+		System.out.println("Srodek: x="+t.x+";y="+t.y);
 	}
 	
 	private void ulepsz_otoczke(Vector<Point> w_otoczki,Vector<Point> punkty_rozw){
+		iterationStart = System.currentTimeMillis();
+		between = new PolygonSides();
 		System.out.println("ulepszam otoczke");
 	    PolygonSides stara_otoczka = new PolygonSides(theAnswer.xpoints, theAnswer.ypoints, theAnswer.npoints);
 	    PolygonSides nowa_otoczka = new PolygonSides(theAnswer.xpoints, theAnswer.ypoints, theAnswer.npoints);
+	    between.setFromSides(nowa_otoczka.sides);
+	    be = true;
 	    PolygonSides tempP1, tempP2;
-	    boolean flaga = true;
-	    Point center = PolygonCenterOfMass(theAnswer);
+	    boolean flaga = true, outFlag = true;
 	    tiniestArea = this.pole_wielokata(theAnswer);
-	    while(flaga){
-	    	flaga = false;
-		    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
-		    	tempP1 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x1, (int)nowa_otoczka.sides.get(i).y1));
-		    	tempP1.setSides();
-		    	tempP2 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2));
-		    	tempP2.setSides();
-		    	if(tempP1 == null || tempP2 == null){
-		    		System.out.println("AAAAAA!");
-		    		return;
-		    	}
-		    	int pIndex1, pIndex2;
-		    	Point point1 = new Point ((int)nowa_otoczka.sides.get(i).x1,(int) nowa_otoczka.sides.get(i).y1);
-		    	Point point2 = new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2);
-		    	if(tempP1.Equals(tempP2)){
-		    		//TODO: side on the same poly
-		    		pIndex1 = getPointIndexOnPoly(point1, tempP1);
-		    		pIndex2 = getPointIndexOnPoly(point2, tempP1);
-		    		if(pIndex1 == getPointIndex(tempP1, pIndex2, -1) || pIndex1 == getPointIndex(tempP1, pIndex2, 1)){
-		    			
-		    			//Vertex cannot be split
-		    		}else{
-		    			/*System.out.println("Npoints:"+nowa_otoczka.npoints);
-		    			System.out.println("i:"+i);
-		    			System.out.println("x1:"+nowa_otoczka.sides.get(i).x1);
-		    			System.out.println("y1:"+nowa_otoczka.sides.get(i).y1);
-		    			System.out.println("x2:"+nowa_otoczka.sides.get(i).x2);
-		    			System.out.println("y2:"+nowa_otoczka.sides.get(i).y2);
-		    			System.out.println("pIndex1:"+pIndex1);
-		    			System.out.println("pIndex2:"+pIndex2);*/
-		    			nowa_otoczka.sides.remove(i);
-		    			flaga = true;
-		    			int counter = 0;
-		    			int step = -1;
+	    while(outFlag){
+	    	System.out.println("Nowy przebieg!");
+	    	outFlag = false;
+	    	flaga = true;
+		    while(flaga){
+		    	System.out.println("Nowy przebieg--");
+		    	flaga = false;
+			    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
+			    	tempP1 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x1, (int)nowa_otoczka.sides.get(i).y1));
+			    	tempP1.setSides();
+			    	tempP2 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2));
+			    	tempP2.setSides();
+			    	if(tempP1 == null || tempP2 == null){
+			    		System.out.println("AAAAAA!");
+			    		return;
+			    	}
+			    	Point point1 = new Point ((int)nowa_otoczka.sides.get(i).x1,(int) nowa_otoczka.sides.get(i).y1);
+			    	Point point2 = new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2);
+			    	if(!tempP1.Equals(tempP2)){
+			    		Line2D.Float tempLine = null;
+			    		Line2D.Float tempLine2 = null;
+			    		int counter = 0;
+			    		for(int j=0 ; j < punkty_rozw.size() ; ++j){
+			    			boolean intersects = false;
+			    			//System.out.println("Szukam1");
+			    			tempLine = new Line2D.Float(point1, punkty_rozw.get(j));
+			    			tempLine2 = new Line2D.Float(punkty_rozw.get(j), point2);
+			    			
+			    			//System.out.println("Sprawdzam"+tempLine.x1+" "+tempLine.y1+" "+tempLine.x2+" "+tempLine.y2);
+			    			if(lineIntersectsPoly(tempLine, nowa_otoczka) || lineIntersectsPoly(tempLine2, nowa_otoczka) || lineInsidePoly(tempLine, tempP1) || lineInsidePoly(tempLine2, tempP1) || lineInsidePoly(tempLine, tempP2) || lineInsidePoly(tempLine2, tempP2)){
+			    				/*System.out.println("Zepsute1");
+			    				printSide(tempLine, -1);
+			    				printSide(tempLine2, -1);
+			    				System.out.println("-----------");*/
+			    				intersects = true;
+			    			}
+			    			if(!intersects){
+				    			for(int k = 0 ; k < wwotoczce.size() ; ++k){
+				    				//System.out.println("Szukam2");
+				    				if(lineIntersectsPoly(tempLine, wwotoczce.get(k)) || lineIntersectsPoly(tempLine2, wwotoczce.get(k)) ){
+				    					//System.out.println("ZEPSUTE2");
+				    					intersects = true;
+				    					break;
+				    				}
+				    			}
+			    			}
+			    			if(!intersects){
+			    				between.setFromSides(nowa_otoczka.sides);
+			    				if(doSteps.getState()){
+					    			try {
+										System.in.read();
+									} catch (IOException e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+				    			}
+				    			between.setFromSides(nowa_otoczka.sides);
+			    				System.out.println("Dodaje zamiast");
+		    					printSide(nowa_otoczka.sides.get(i+counter), i+counter);
+		    					printSide(tempLine2, i+counter-1);
+		    					printCenter(tempLine2);
+		    					printSide(tempLine, i+counter);
+		    					printCenter(tempLine);
+		    					System.out.println("---------");
+		    					stara_otoczka.setFromSides(nowa_otoczka.sides);
+		    					nowa_otoczka.sides.remove(i+counter);
+		    					nowa_otoczka.sides.insertElementAt(tempLine2, i+counter);
+		    					nowa_otoczka.sides.insertElementAt(tempLine, i+counter);
 	
-		    			for(int j = pIndex1 ; j != getPointIndex(tempP1, pIndex2 ,step) ; j = getPointIndex(tempP1, j, step)){
-		    				nowa_otoczka.sides.insertElementAt(new Line2D.Float(tempP1.xpoints[j], tempP1.ypoints[j], tempP1.xpoints[getPointIndex(tempP1,j,step)],tempP1.ypoints[getPointIndex(tempP1,j,step)] ), i + counter);
-		    				nowa_otoczka.setPoints();
-		    				//w_otoczki.insertElementAt(new Point(tempP1.xpoints[j], tempP1.ypoints[j]), i + counter);
-		    				punkty_rozw.remove(new Point(tempP1.xpoints[j], tempP1.ypoints[j]));
-		    				++counter;
-		    			}
-		    		}
-		    	}else{
-		    		Line2D.Float tempLine = null;
-		    		Line2D.Float tempLine2 = null;
-		    		int counter = 0;
-		    		for(int j=0 ; j < punkty_rozw.size() ; ++j){
-		    			boolean intersects = false;
-		    			//System.out.println("Szukam1");
-		    			tempLine = new Line2D.Float(point1, punkty_rozw.get(j));
-		    			tempLine2 = new Line2D.Float(punkty_rozw.get(j), point2);
-		    			//System.out.println("Sprawdzam"+tempLine.x1+" "+tempLine.y1+" "+tempLine.x2+" "+tempLine.y2);
-		    			for(int k = 0 ; k < wwotoczce.size() ; ++k){
-		    				//System.out.println("Szukam2");
-		    				if(lineIntersectsPoly(tempLine, wwotoczce.get(k)) || lineIntersectsPoly(tempLine2, wwotoczce.get(k))){
-		    					intersects = true;
-		    					break;
-		    				}
-		    			}
-		    			if(!intersects){
-		    				//String debug = "usuwam "+nowa_otoczka.sides.get(i).x1+" "+nowa_otoczka.sides.get(i).y1+" "+nowa_otoczka.sides.get(i).x2+" "+nowa_otoczka.sides.get(i).y2;
-	    					nowa_otoczka.sides.remove(i+counter);
-	    					nowa_otoczka.sides.insertElementAt(tempLine2, i+counter);
-	    					nowa_otoczka.sides.insertElementAt(tempLine, i+counter);
-	    					counter++;
-
-			    			stara_otoczka.setFromSides(nowa_otoczka.sides);
-			    			//System.out.println(debug);
-			    			punkty_rozw.remove(j);
-			    			flaga = true;
-			    			break;
-		    			}
-		    		}
-		    	}
-		    }
-		    
-		    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
-		    	for(int j = 0 ; j < nowa_otoczka.sides.size() ; ++j){
-		    		if(i == j){
-		    			continue;
-		    		}else if(haveSamePoints(nowa_otoczka.sides.get(i), nowa_otoczka.sides.get(j))){
-		    			Point pTemp1 = new Point((int)nowa_otoczka.sides.get(i).getX1(), (int)nowa_otoczka.sides.get(i).getY1());
-		    			Point pTemp2 = new Point((int)nowa_otoczka.sides.get(i).getX2(), (int)nowa_otoczka.sides.get(i).getY2());
-		    			boolean containsPoint = false;
-		    			for(int k = 0 ; k < nowa_otoczka.sides.size() ; ++k){
-		    				if(k == i && k == j){
-		    					continue;
-		    				}else{
-		    					if(haveCommonPoint(nowa_otoczka.sides.get(k) , new Line2D.Float(pTemp1, pTemp2))){
-		    						containsPoint = true;
+		    					
+		    					nowa_otoczka.setPoints();
+		    					counter++;
+		    					boolean outside = false;
+		    					for(int k = 0 ; k < wwotoczce.size() ; ++k){
+		    						for(int h = 0 ; h < wwotoczce.get(k).npoints ; ++h){
+			    						if(!nowa_otoczka.contains(new Point(wwotoczce.get(k).xpoints[h], wwotoczce.get(k).ypoints[h]))){
+			    							boolean miniFlag = false;
+			    							for(int g = 0 ; g < nowa_otoczka.npoints ; ++g){
+			    								if(wwotoczce.get(k).xpoints[h] == nowa_otoczka.xpoints[g] && wwotoczce.get(k).ypoints[h] == nowa_otoczka.ypoints[g]){
+			    									miniFlag = true;
+			    								}
+			    							}
+			    							if(!miniFlag){
+				    							outside = true;
+				    							
+				    							System.out.println("COFAM");
+				    							System.out.println(wwotoczce.get(k).xpoints[h]+"x"+ wwotoczce.get(k).ypoints[h]);
+				    							//return;
+				    							break;
+			    							}
+			    						}
+			    						if(outside){
+			    							break;
+			    						}
+		    						}
+		    						if(outside){
+		    							break;
+		    						}
 		    					}
-		    				}
-		    			}
-		    			if(!containsPoint){
-			    			printSide(nowa_otoczka.sides.get(i), i);
-			    			nowa_otoczka.sides.remove(i);
-			    			printSide(nowa_otoczka.sides.get((i > j ? j : j-1)), (i > j ? j : j-1));
-			    			nowa_otoczka.sides.remove(i > j ? j : --j);
-			    			nowa_otoczka.setPoints();
-			    			--i;
-			    			System.out.println("usuwam");
-		    			}
-		    		}
-		    	}
+		    					if(outside){
+		    						nowa_otoczka.setFromSides(stara_otoczka.sides);
+		    						punkty_rozw.remove(j);
+		    					}else{
+		    						stara_otoczka.setFromSides(nowa_otoczka.sides);
+		    						punkty_rozw.remove(j);
+		    						j--;
+					    			flaga = true;
+					    			outFlag = true;
+					    			break;
+		    					}
+			    			}else{
+			    				//System.out.println("nie dodaje");
+			    			}
+			    		}
+			    		
+			    	}
+			    }
 		    }
-		    nowa_otoczka.setPoints();
-		    stara_otoczka.setFromSides(nowa_otoczka.sides);
 		    
+		    flaga = true;
+		    while(flaga){
+		    	flaga = false;
+			    for(int i = 0 ; i < nowa_otoczka.sides.size(); ++i){
+			    	tempP1 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x1, (int)nowa_otoczka.sides.get(i).y1));
+			    	tempP1.setSides();
+			    	tempP2 = getPolyByPoint(new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2));
+			    	tempP2.setSides();
+			    	if(tempP1 == null || tempP2 == null){
+			    		System.out.println("AAAAAA!");
+			    		return;
+			    	}
+			    	int pIndex1, pIndex2;
+			    	Point point1 = new Point ((int)nowa_otoczka.sides.get(i).x1,(int) nowa_otoczka.sides.get(i).y1);
+			    	Point point2 = new Point ((int)nowa_otoczka.sides.get(i).x2, (int)nowa_otoczka.sides.get(i).y2);
+			    	if(tempP1.Equals(tempP2)){
+			    		//TODO: side on the same poly
+			    		pIndex1 = getPointIndexOnPoly(point1, tempP1);
+			    		pIndex2 = getPointIndexOnPoly(point2, tempP1);
+			    		if(pIndex1 == getPointIndex(tempP1, pIndex2, -1) || pIndex1 == getPointIndex(tempP1, pIndex2, 1)){
+			    			
+			    			//Vertex cannot be split
+			    		}else{
+			    			nowa_otoczka.sides.remove(i);
+			    			flaga = true;
+			    			outFlag = true;
+			    			int counter = 0;
+			    			int step = -1;
+			    			/*if(getPointIndex(tempP1, pIndex1 , 1) == pIndex2){
+		                        step = -1;
+			    			}else{
+		                        step = -1;
+			    			}*/
+		
+			    			for(int j = pIndex1 ; j != pIndex2 ; j = getPointIndex(tempP1, j, step)){
+			    				nowa_otoczka.sides.insertElementAt(new Line2D.Float(tempP1.xpoints[j], tempP1.ypoints[j], tempP1.xpoints[getPointIndex(tempP1,j,step)],tempP1.ypoints[getPointIndex(tempP1,j,step)] ), i + counter);
+			    				nowa_otoczka.setPoints();
+			    				System.out.println("Dodaje odcinek na wielokacie j:"+j);
+			    				if(doSteps.getState()){
+				    				try {
+										System.in.read();
+									} catch (IOException e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+			    				}
+			    				between.setFromSides(nowa_otoczka.sides);
+			    				//w_otoczki.insertElementAt(new Point(tempP1.xpoints[j], tempP1.ypoints[j]), i + counter);
+			    				punkty_rozw.remove(new Point(tempP1.xpoints[j], tempP1.ypoints[j]));
+			    				outFlag = true;
+			    				++counter;
+			    			}
+			    		}
+			    	}
+			    }
+		    }
 	    }
-	    
+	    System.out.println("Punkty rozw: "+punkty_rozw.size());
 	    theAnswer.setFromSides(nowa_otoczka.sides);
-	    	printSides(theAnswer);
-	    generated = true;
+	    be = false;
+	    	//printSides(theAnswer);
+	    //generated = true;
 	    System.out.println("koncze otoczke");
 	}
 	
+	private boolean lineInsidePoly(Line2D.Float l, PolygonSides poly){
+		int i1 = getPointIndexOnPoly(new Point((int)l.x1, (int)l.y1), poly);
+		int i2 = getPointIndexOnPoly(new Point((int)l.x2, (int)l.y2), poly);
+		//System.out.println("i1:"+i1+"; i2:"+i2);
+		if(i1 == -1 || i2 == -1){
+			//System.out.println("f");
+			return false;
+		}
+		if(Math.abs(i1-i2) == 1 || Math.abs(i1-i2) == poly.npoints-1 ){
+			//System.out.println("f");
+			return false;
+		}else{
+			//System.out.println("t");
+			return true;
+		}
+	}
+	
+	private boolean isPolygonVertex(PolygonSides p, Line2D.Float l){
+		
+		for(int i = 1 ; i < p.npoints ; ++i){
+			if(haveSamePoints(new Line2D.Float(p.xpoints[i-1] , p.ypoints[i-1], p.xpoints[i] , p.ypoints[i]), l)){
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
 	private boolean haveSamePoints(Line2D.Float line1, Line2D.Float line2){
-		if((line1.getP1().equals(line2.getP1()) && line1.getP2().equals(line2.getP2())) || (line1.getP1().equals(line2.getP2()) && line1.getP2().equals(line2.getP1()))){
+		if((line1.x1 == line2.x1 && line1.y1 == line2.y1 && line1.x2 == line2.x2 && line1.y2 == line2.y2 ) || (line1.x1 == line2.x2 && line1.y1 == line2.y2 && line1.x2 == line2.x1 && line1.y2 == line2.y1 )){
 			return true;
 		}
 		return false;
 	}
 	
-	private boolean haveCommonPoint(Line2D.Float line1, Line2D.Float line2){
+	/*private boolean haveCommonPoint(Line2D.Float line1, Line2D.Float line2){
 		if(line1.getP1().equals(line2.getP1()) || line1.getP2().equals(line2.getP2()) || line1.getP1().equals(line2.getP2()) || line1.getP2().equals(line2.getP1())){
 			return true;
 		}
@@ -1307,7 +1027,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	    }
 	    return true;
 	}
-	
+	*/
 	private class PolygonSides extends Polygon{
 		/**
 		 * 
@@ -1369,8 +1089,7 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 	
 	float pole_wielokata(Polygon p){
 	    int suma = 0;
-	    for(int i = 0 ; i < p.npoints-1 ; i++)
-	    {
+	    for(int i = 0 ; i < p.npoints-1 ; i++) {
 	        suma += (p.xpoints[i] * p.ypoints[i+1] - p.xpoints[i+1] * p.ypoints[i]);
 	    }
 	    suma += (p.xpoints[p.npoints-1] * p.ypoints[0] - p.xpoints[0] * p.ypoints[p.npoints-1]);
@@ -1385,6 +1104,34 @@ public class Solver extends Applet implements ActionListener, MouseMotionListene
 		}
 		
 		return points;
+	}
+	
+	private Point getLineCenter(Line2D.Float l){
+		return new Point((int)(l.x1+l.x2)/2, (int)(l.y1 + l.y2)/2);
+	}
+	
+	private boolean validatePoly(PolygonSides poly){
+		for(int i = 0 ; i < poly.sides.size() ; ++i){
+			for(int j = 0 ; j < poly.sides.size() ; ++j){
+				if(i == j || i == j+1 || i == j-1 || lineCommonPoint(poly.sides.get(i), poly.sides.get(j))){
+					continue;
+				}else{
+					if(poly.sides.get(i).intersectsLine(poly.sides.get(j))){
+						System.out.println("Źle linia i:"+i+" j:"+j);
+						printSide(poly.sides.get(i),i);
+						printSide(poly.sides.get(j),j);
+						return false;
+					}
+				}
+			}
+			for(int j = 0 ; j < polygons.length ; ++j){
+				if(this.lineIntersectsPoly(poly.sides.get(i), polygons[j])){
+					System.out.println("Źle poly");
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 }
 
