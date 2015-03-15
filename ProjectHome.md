@@ -1,0 +1,1 @@
+Projekt na laboratoria z optymalizacji kombinatorycznej
